@@ -2,15 +2,32 @@
 
 A modern, standalone operations panel for WooCommerce.
 
-WooOps is designed for store teams who want to manage orders, customers, products and inventory without repeatedly going back into WordPress/wp-admin.
+WooOps lets store teams manage the day-to-day work that normally sends them back into WordPress: orders, customers, products, stock and operational actions.
+
+## What works
+
+- Live WooCommerce dashboard data
+- Order search, status filtering and pagination
+- Order detail with status updates
+- Bulk order status updates
+- Customer listing and search
+- Product listing, search and stock updates
+- Order notes API
+- WooCommerce connection health check
+- Signed WooCommerce webhook endpoint
+- Optional password-protected admin session
+- Server-side WooCommerce credentials
 
 ## Architecture
 
-- **Next.js + TypeScript** — application and server-side API layer
-- **Tailwind CSS + shadcn/ui** — interface
-- **WooCommerce REST API** — source of truth
-- **WooCommerce webhooks** — planned for live events
-- **Server-side credentials** — WooCommerce keys are never exposed to the browser
+- **Next.js 16 + TypeScript**
+- **Tailwind CSS + shadcn/ui**
+- **WooCommerce REST API** as the source of truth
+- **WooCommerce webhooks** for event ingestion
+- No database required for the single-store deployment
+- Credentials stay on the server
+
+Next.js 16 uses asynchronous request APIs such as `params` and `cookies`; this project follows those conventions.
 
 ## Getting started
 
@@ -20,7 +37,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Add your WooCommerce REST API credentials to `.env.local`:
+Required store configuration:
 
 ```env
 WOOCOMMERCE_URL=https://your-store.com
@@ -28,28 +45,43 @@ WOOCOMMERCE_CONSUMER_KEY=ck_your_consumer_key
 WOOCOMMERCE_CONSUMER_SECRET=cs_your_consumer_secret
 ```
 
-Create the keys in **WooCommerce → Settings → Advanced → REST API**.
+Optional protection:
 
-Open `http://localhost:3000`.
+```env
+WOOOPS_ADMIN_PASSWORD=change_me
+WOOOPS_SESSION_SECRET=generate_a_long_random_secret
+WOOCOMMERCE_WEBHOOK_SECRET=your_webhook_secret
+```
 
-## Current scope
+If the two `WOOOPS_*` variables are set, the admin is protected by a seven-day signed HTTP-only session cookie.
 
-The initial shell includes the dashboard, orders, products, customers, inventory and store connection areas, plus the server-side WooCommerce client and orders API route.
+Create WooCommerce REST API keys in **WooCommerce → Settings → Advanced → REST API**.
 
-### Roadmap
+For webhooks, point WooCommerce to:
 
-1. Live orders list with search, filters and pagination
-2. Order detail and status/payment actions
-3. Bulk order operations
-4. Customers and order history
-5. Products and inventory updates
-6. Shipment/tracking workflow
-7. Webhook-driven live updates
-8. Multi-store support and authentication
+`POST /api/woo/webhooks`
 
-## Contributing
+and use the same secret configured in `WOOCOMMERCE_WEBHOOK_SECRET`.
 
-Create a feature branch from `main`, keep changes focused, and open a pull request with a clear description and screenshots for UI changes.
+## Development
+
+```bash
+npm run lint
+npm run build
+npm start
+```
+
+## Roadmap
+
+The core single-store MVP is implemented. Future releases can add:
+
+1. Multi-store accounts
+2. Database-backed users and roles
+3. Shipping-provider integrations and tracking
+4. Product creation/editing UI
+5. Advanced analytics
+6. Saved views and automation rules
+7. Marketplace/channel integrations
 
 ## License
 
