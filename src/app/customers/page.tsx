@@ -1,3 +1,3 @@
-import { Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-export default function CustomersPage() { return <AppShell><div className="space-y-6"><div><p className="text-sm text-muted-foreground">Workspace</p><h1 className="mt-1 text-2xl font-semibold">Customers</h1><p className="mt-1 text-sm text-muted-foreground">Search customers and see their order history.</p></div><div className="rounded-xl border bg-background p-16 text-center shadow-sm"><Users className="mx-auto size-8 text-muted-foreground" /><p className="mt-4 font-medium">Customer management is next</p><p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">Customer profiles, order history and notes will live here.</p></div></div></AppShell>; }
+import { CustomersTable } from "@/components/customers-table";
+export default function CustomersPage(){return <AppShell><div className="space-y-6"><div><p className="text-sm text-muted-foreground">Workspace</p><h1 className="mt-1 text-2xl font-semibold">Customers</h1><p className="mt-1 text-sm text-muted-foreground">Search customers and review store customer data.</p></div><CustomersTable/></div></AppShell>}
