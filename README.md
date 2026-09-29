@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WooOps
 
-## Getting Started
+A modern, standalone operations panel for WooCommerce.
 
-First, run the development server:
+WooOps lets store teams manage the day-to-day work that normally sends them back into WordPress: orders, customers, products, stock and operational actions.
+
+## What works
+
+- Live WooCommerce dashboard data
+- Order search, status filtering and pagination
+- Order detail with status updates
+- Bulk order status updates
+- Customer listing and search
+- Product listing, search and stock updates
+- Order notes API
+- WooCommerce connection health check
+- Signed WooCommerce webhook endpoint
+- Optional password-protected admin session
+- Server-side WooCommerce credentials
+
+## Architecture
+
+- **Next.js 16 + TypeScript**
+- **Tailwind CSS + shadcn/ui**
+- **WooCommerce REST API** as the source of truth
+- **WooCommerce webhooks** with signature verification and event logging
+- No database required for the single-store deployment
+- Credentials stay on the server
+
+Next.js 16 uses asynchronous request APIs such as `params` and `cookies`; this project follows those conventions.
+
+## Getting started
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required store configuration:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+WOOCOMMERCE_URL=https://your-store.com
+WOOCOMMERCE_CONSUMER_KEY=ck_your_consumer_key
+WOOCOMMERCE_CONSUMER_SECRET=cs_your_consumer_secret
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Optional protection:
 
-## Learn More
+```env
+WOOOPS_ADMIN_PASSWORD=change_me
+WOOOPS_SESSION_SECRET=generate_a_long_random_secret
+WOOCOMMERCE_WEBHOOK_SECRET=your_webhook_secret
+```
 
-To learn more about Next.js, take a look at the following resources:
+Set both `WOOOPS_*` variables to protect the admin with a seven-day signed HTTP-only session cookie. If the password is set without the session secret, access is denied until the secret is configured. Use a long random session secret. WooCommerce must be accessed over HTTPS (localhost is allowed for development).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Create WooCommerce REST API keys in **WooCommerce → Settings → Advanced → REST API**.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+For webhooks, point WooCommerce to:
 
-## Deploy on Vercel
+`POST /api/woo/webhooks`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+and use the same secret configured in `WOOCOMMERCE_WEBHOOK_SECRET`.
+The webhook endpoint verifies signatures and logs the event topic; it does not persist events or update a local database.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Development
+
+```bash
+npm run lint
+npm run build
+npm start
+```
+
+## Roadmap
+
+The core single-store MVP is implemented. Future releases can add:
+
+1. Multi-store accounts
+2. Database-backed users and roles
+3. Shipping-provider integrations and tracking
+4. Product creation/editing UI
+5. Advanced analytics
+6. Saved views and automation rules
+7. Marketplace/channel integrations
+
+## License
+
+MIT

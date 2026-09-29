@@ -1,0 +1,3 @@
+import { AppShell } from "@/components/app-shell";
+import { CustomersTable } from "@/components/customers-table";
+export default function CustomersPage(){return <AppShell><div className="space-y-6"><div><p className="text-sm text-muted-foreground">Workspace</p><h1 className="mt-1 text-2xl font-semibold">Customers</h1><p className="mt-1 text-sm text-muted-foreground">Search customers and review store customer data.</p></div><CustomersTable/></div></AppShell>}
