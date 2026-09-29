@@ -46,7 +46,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">S</div>
               <div className="min-w-0"><p className="truncate text-sm font-medium">Store Admin</p><p className="truncate text-xs text-muted-foreground">WooCommerce</p></div>
             </div>
-            <ChevronDown className="size-4 text-muted-foreground" />
+            <button onClick={async()=>{await fetch("/api/auth/logout",{method:"POST"});window.location.href="/login"}} title="Sign out" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronDown className="size-4" /></button>
           </div>
         </div>
       </aside>
