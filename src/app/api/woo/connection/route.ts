@@ -1,0 +1,2 @@
+import{NextResponse}from"next/server";import{isWooCommerceConfigured,wooFetch}from"@/lib/woocommerce/client";
+export async function GET(){if(!isWooCommerceConfigured())return NextResponse.json({configured:false});try{const system=await wooFetch<{environment?:{version?:string};version?:string}>("system_status");return NextResponse.json({configured:true,woocommerce_version:system.environment?.version||system.version||null});}catch(e){return NextResponse.json({configured:true,error:e instanceof Error?e.message:"Connection failed"},{status:502});}}
