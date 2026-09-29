@@ -1,0 +1,3 @@
+import {NextRequest,NextResponse} from "next/server";import{wooFetch}from"@/lib/woocommerce/client";
+export async function GET(_:NextRequest,{params}:{params:Promise<{id:string}>}){try{return NextResponse.json(await wooFetch(`products/${(await params).id}`));}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unknown error"},{status:502});}}
+export async function PATCH(r:NextRequest,{params}:{params:Promise<{id:string}>}){try{return NextResponse.json(await wooFetch(`products/${(await params).id}`,{method:"PUT",body:JSON.stringify(await r.json())}));}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unknown error"},{status:502});}}
