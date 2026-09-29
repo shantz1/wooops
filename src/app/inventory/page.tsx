@@ -1,0 +1,3 @@
+import { Boxes } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+export default function InventoryPage() { return <AppShell><div className="space-y-6"><div><p className="text-sm text-muted-foreground">Workspace</p><h1 className="mt-1 text-2xl font-semibold">Inventory</h1><p className="mt-1 text-sm text-muted-foreground">Keep stock operations separate from the WordPress dashboard.</p></div><div className="rounded-xl border bg-background p-16 text-center shadow-sm"><Boxes className="mx-auto size-8 text-muted-foreground" /><p className="mt-4 font-medium">Inventory workspace</p><p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">Low-stock alerts, stock adjustments and inventory history will be added here.</p></div></div></AppShell>; }
