@@ -1,0 +1,3 @@
+import {NextRequest,NextResponse} from "next/server";
+import crypto from "node:crypto";
+export async function POST(request:NextRequest){const secret=process.env.WOOCOMMERCE_WEBHOOK_SECRET;if(!secret)return NextResponse.json({error:"Webhook secret is not configured"},{status:503});const raw=await request.text();const signature=request.headers.get("x-wc-webhook-signature")||"";const expected=crypto.createHmac("sha256",secret).update(raw).digest("base64");if(!crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))return NextResponse.json({error:"Invalid signature"},{status:401});const topic=request.headers.get("x-wc-webhook-topic");console.info("WooCommerce webhook received",{topic});return NextResponse.json({received:true});}
