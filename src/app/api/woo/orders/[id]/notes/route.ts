@@ -1,0 +1,3 @@
+import{NextRequest,NextResponse}from"next/server";import{wooFetch}from"@/lib/woocommerce/client";
+export async function GET(_:NextRequest,{params}:{params:Promise<{id:string}>}){try{return NextResponse.json(await wooFetch(`orders/${(await params).id}/notes`));}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unable to load notes"},{status:502});}}
+export async function POST(r:NextRequest,{params}:{params:Promise<{id:string}>}){try{return NextResponse.json(await wooFetch(`orders/${(await params).id}/notes`,{method:"POST",body:JSON.stringify(await r.json())}),{status:201});}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unable to add note"},{status:502});}}
