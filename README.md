@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WooOps
 
-## Getting Started
+A modern, standalone operations panel for WooCommerce.
 
-First, run the development server:
+WooOps is designed for store teams who want to manage orders, customers, products and inventory without repeatedly going back into WordPress/wp-admin.
+
+## Architecture
+
+- **Next.js + TypeScript** — application and server-side API layer
+- **Tailwind CSS + shadcn/ui** — interface
+- **WooCommerce REST API** — source of truth
+- **WooCommerce webhooks** — planned for live events
+- **Server-side credentials** — WooCommerce keys are never exposed to the browser
+
+## Getting started
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Add your WooCommerce REST API credentials to `.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+WOOCOMMERCE_URL=https://your-store.com
+WOOCOMMERCE_CONSUMER_KEY=ck_your_consumer_key
+WOOCOMMERCE_CONSUMER_SECRET=cs_your_consumer_secret
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create the keys in **WooCommerce → Settings → Advanced → REST API**.
 
-## Learn More
+Open `http://localhost:3000`.
 
-To learn more about Next.js, take a look at the following resources:
+## Current scope
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The initial shell includes the dashboard, orders, products, customers, inventory and store connection areas, plus the server-side WooCommerce client and orders API route.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Roadmap
 
-## Deploy on Vercel
+1. Live orders list with search, filters and pagination
+2. Order detail and status/payment actions
+3. Bulk order operations
+4. Customers and order history
+5. Products and inventory updates
+6. Shipment/tracking workflow
+7. Webhook-driven live updates
+8. Multi-store support and authentication
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Contributing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Create a feature branch from `main`, keep changes focused, and open a pull request with a clear description and screenshots for UI changes.
+
+## License
+
+MIT
