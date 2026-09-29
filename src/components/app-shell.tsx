@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { BarChart3, Boxes, ChevronDown, LayoutDashboard, Package, Settings, ShoppingCart, Users } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Boxes, ChevronDown, LayoutDashboard, Package, Settings, ShoppingCart, Users } from "lucide-react";
 
 const navigation = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
@@ -14,6 +14,7 @@ const navigation = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   return (
     <div className="min-h-screen bg-muted/30 text-foreground">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r bg-background lg:flex lg:flex-col">
@@ -46,14 +47,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">S</div>
               <div className="min-w-0"><p className="truncate text-sm font-medium">Store Admin</p><p className="truncate text-xs text-muted-foreground">WooCommerce</p></div>
             </div>
-            <button onClick={async()=>{await fetch("/api/auth/logout",{method:"POST"});window.location.href="/login"}} title="Sign out" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronDown className="size-4" /></button>
+            <button onClick={async()=>{await fetch("/api/auth/logout",{method:"POST"});router.push("/login")}} title="Sign out" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronDown className="size-4" /></button>
           </div>
         </div>
       </aside>
       <div className="lg:pl-64">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/95 px-5 backdrop-blur lg:px-8">
           <div><p className="text-sm font-medium">Operations</p><p className="text-xs text-muted-foreground">WooCommerce control center</p></div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="size-2 rounded-full bg-emerald-500" /> Connected</div>
+          <div className="text-xs text-muted-foreground">WooCommerce</div>
         </header>
         <main className="mx-auto max-w-[1500px] p-5 lg:p-8">{children}</main>
       </div>

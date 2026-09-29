@@ -23,7 +23,7 @@ WooOps lets store teams manage the day-to-day work that normally sends them back
 - **Next.js 16 + TypeScript**
 - **Tailwind CSS + shadcn/ui**
 - **WooCommerce REST API** as the source of truth
-- **WooCommerce webhooks** for event ingestion
+- **WooCommerce webhooks** with signature verification and event logging
 - No database required for the single-store deployment
 - Credentials stay on the server
 
@@ -53,7 +53,7 @@ WOOOPS_SESSION_SECRET=generate_a_long_random_secret
 WOOCOMMERCE_WEBHOOK_SECRET=your_webhook_secret
 ```
 
-If the two `WOOOPS_*` variables are set, the admin is protected by a seven-day signed HTTP-only session cookie.
+Set both `WOOOPS_*` variables to protect the admin with a seven-day signed HTTP-only session cookie. If the password is set without the session secret, access is denied until the secret is configured. Use a long random session secret. WooCommerce must be accessed over HTTPS (localhost is allowed for development).
 
 Create WooCommerce REST API keys in **WooCommerce → Settings → Advanced → REST API**.
 
@@ -62,6 +62,7 @@ For webhooks, point WooCommerce to:
 `POST /api/woo/webhooks`
 
 and use the same secret configured in `WOOCOMMERCE_WEBHOOK_SECRET`.
+The webhook endpoint verifies signatures and logs the event topic; it does not persist events or update a local database.
 
 ## Development
 

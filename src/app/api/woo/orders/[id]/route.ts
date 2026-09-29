@@ -1,5 +1,29 @@
-import {NextRequest,NextResponse} from "next/server";
-import {wooFetch} from "@/lib/woocommerce/client";
-export async function GET(_:NextRequest,{params}:{params:Promise<{id:string}>}){try{return NextResponse.json(await wooFetch(`orders/${(await params).id}`));}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unknown error"},{status:502});}}
-export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:string}>}){try{const id=(await params).id;return NextResponse.json(await wooFetch(`orders/${id}`,{method:"PUT",body:JSON.stringify(await request.json())}));}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unknown error"},{status:502});}}
-export async function DELETE(_:NextRequest,{params}:{params:Promise<{id:string}>}){try{return NextResponse.json(await wooFetch(`orders/${(await params).id}`,{method:"DELETE"}));}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unknown error"},{status:502});}}
+import { NextRequest, NextResponse } from "next/server";
+import { wooFetch } from "@/lib/woocommerce/client";
+import { isId, isOrderStatus } from "@/lib/woocommerce/validation";
+
+type Context = { params: Promise<{ id: string }> };
+
+export async function GET(_: NextRequest, { params }: Context) {
+  const { id } = await params;
+  if (!isId(id)) return NextResponse.json({ error: "Invalid order ID." }, { status: 400 });
+  try { return NextResponse.json(await wooFetch(`orders/${id}`)); }
+  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load order." }, { status: 502 }); }
+}
+
+export async function PATCH(request: NextRequest, { params }: Context) {
+  const { id } = await params;
+  const body = await request.json().catch(() => null);
+  if (!isId(id) || !isOrderStatus(body?.status)) {
+    return NextResponse.json({ error: "Invalid order ID or status." }, { status: 400 });
+  }
+  try { return NextResponse.json(await wooFetch(`orders/${id}`, { method: "PUT", body: JSON.stringify({ status: body.status }) })); }
+  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to update order." }, { status: 502 }); }
+}
+
+export async function DELETE(_: NextRequest, { params }: Context) {
+  const { id } = await params;
+  if (!isId(id)) return NextResponse.json({ error: "Invalid order ID." }, { status: 400 });
+  try { return NextResponse.json(await wooFetch(`orders/${id}`, { method: "DELETE" })); }
+  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to delete order." }, { status: 502 }); }
+}
