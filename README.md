@@ -11,12 +11,12 @@ WooOps is a self-hosted Next.js 16 application. It talks to the WooCommerce REST
 | Overview | See the five latest orders and summaries calculated from those five orders. These are **not** store-wide analytics. |
 | Orders | Search, filter by status, paginate, open an order, change its status, and update selected orders in bulk. |
 | Customers | Search and view the first 50 matching customers. |
-| Products and inventory | Search and view the first 50 matching products; create simple draft or published products; update non-negative stock quantities. |
+| Products and inventory | Search and view the first 50 matching products with image thumbnails; create simple draft or published products with an optional image URL; update non-negative stock quantities. |
 | Connection | Check the WooCommerce API connection on the Settings page. |
 | API | Read and add order notes. There is no notes UI yet. |
 | Webhooks | Verify WooCommerce signatures and log event topics. No event persistence or background sync yet. |
 
-The application also exposes order creation and deletion routes, but the MVP has no UI for those actions. Treat the API as an administrative interface. Product creation currently covers basic simple products; variations, images, categories, and advanced attributes still require WooCommerce.
+The application also exposes order creation and deletion routes, but the MVP has no UI for those actions. Treat the API as an administrative interface. Product creation currently covers basic simple products and one existing image URL from the same store; file uploads, variations, categories, and advanced attributes still require WooCommerce.
 
 ## How it works
 

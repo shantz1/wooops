@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { ProductThumbnail } from "@/components/product-thumbnail";
 
 export function CreateProductForm() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export function CreateProductForm() {
   const [sku, setSku] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [status, setStatus] = useState<"draft" | "publish">("draft");
   const [manageStock, setManageStock] = useState(false);
   const [stock, setStock] = useState("");
@@ -36,6 +38,7 @@ export function CreateProductForm() {
           sku: sku.trim(),
           regular_price: price,
           description: description.trim(),
+          image_url: imageUrl.trim(),
           status,
           manage_stock: manageStock,
           ...(manageStock ? { stock_quantity: Number(stock) } : {}),
@@ -76,6 +79,13 @@ export function CreateProductForm() {
         <label className="block text-sm font-medium">Description <span className="text-muted-foreground">(optional)</span>
           <textarea rows={4} value={description} onChange={event => setDescription(event.target.value)} className="mt-2 w-full rounded-lg border bg-background p-3" />
         </label>
+        <div className="flex items-end gap-4">
+          <label className="block flex-1 text-sm font-medium">Product image URL <span className="text-muted-foreground">(optional)</span>
+            <input type="url" placeholder="https://your-store.com/wp-content/uploads/..." value={imageUrl} onChange={event => setImageUrl(event.target.value)} className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />
+          </label>
+          <ProductThumbnail key={imageUrl} src={imageUrl.trim()} alt="Product image preview" size={56} />
+        </div>
+        <p className="-mt-3 text-xs text-muted-foreground">Use an existing Media Library image URL from this WooCommerce store. Direct file upload is not available yet.</p>
         <label className="flex items-center gap-3 text-sm font-medium">
           <input type="checkbox" checked={manageStock} onChange={event => setManageStock(event.target.checked)} /> Manage stock
         </label>
