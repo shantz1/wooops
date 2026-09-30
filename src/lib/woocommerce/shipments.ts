@@ -10,6 +10,7 @@ export interface Shipment {
 
 export interface OrderWithMeta {
   meta_data?: Array<{ id: number; key: string; value: unknown }>;
+  billing?: { email?: string };
 }
 
 export function readShipments(order: OrderWithMeta) {

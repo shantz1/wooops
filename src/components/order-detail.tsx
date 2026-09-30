@@ -1,8 +1,88 @@
 "use client";
-import Link from"next/link";import{useCallback,useEffect,useState}from"react";import{ArrowLeft,Loader2,RefreshCw,Save}from"lucide-react";import type{WooOrder,WooOrderStatus}from"@/types/woocommerce";
-const statuses:WooOrderStatus[]=["pending","processing","on-hold","completed","cancelled","refunded","failed"];
-export function OrderDetail({id}:{id:string}){const[order,setOrder]=useState<WooOrder|null>(null),[status,setStatus]=useState<WooOrderStatus>("pending"),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[message,setMessage]=useState("");
-const load=useCallback(async()=>{setLoading(true);const r=await fetch("/api/woo/orders/"+id);const d=await r.json();if(r.ok){setOrder(d);setStatus(d.status)}else setMessage(d.error||"Unable to load order");setLoading(false)},[id]);useEffect(()=>{queueMicrotask(()=>{void load()})},[load]);
-const save=async()=>{setSaving(true);setMessage("");const r=await fetch("/api/woo/orders/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})});const d=await r.json();if(r.ok){setOrder(d);setMessage("Order updated.");}else setMessage(d.error||"Update failed");setSaving(false)};
-if(loading)return <div className="grid min-h-[50vh] place-items-center"><Loader2 className="size-6 animate-spin"/></div>;if(!order)return <div className="space-y-4"><Link href="/orders" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft className="size-4"/>Back to orders</Link><p>{message||"Order not found."}</p></div>;
-return <div className="space-y-6"><div className="flex items-center justify-between"><div><Link href="/orders" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4"/>Back to orders</Link><h1 className="text-2xl font-semibold">Order #{order.number}</h1><p className="mt-1 text-sm text-muted-foreground">{new Date(order.date_created).toLocaleString()}</p></div><button onClick={load} className="rounded-lg border p-2 hover:bg-muted"><RefreshCw className="size-4"/></button></div><div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]"><div className="space-y-4"><section className="rounded-xl border bg-background shadow-sm"><div className="border-b p-5"><h2 className="font-semibold">Items</h2></div><div className="divide-y">{order.line_items.map(item=><div key={item.id} className="flex justify-between gap-4 p-5"><div><p className="font-medium">{item.name}</p><p className="text-sm text-muted-foreground">Qty {item.quantity}</p></div><p className="font-medium">{order.currency} {item.total}</p></div>)}</div><div className="border-t p-5 text-right"><span className="text-sm text-muted-foreground">Total </span><span className="font-semibold">{order.currency} {order.total}</span></div></section><section className="rounded-xl border bg-background p-5 shadow-sm"><h2 className="font-semibold">Customer</h2><p className="mt-3 font-medium">{order.billing.first_name} {order.billing.last_name}</p><p className="text-sm text-muted-foreground">{order.billing.email}</p><p className="text-sm text-muted-foreground">{order.billing.phone}</p><p className="mt-3 text-sm">{[order.billing.address_1,order.billing.city,order.billing.state,order.billing.postcode].filter(Boolean).join(", ")}</p></section></div><div className="space-y-4"><section className="rounded-xl border bg-background p-5 shadow-sm"><h2 className="font-semibold">Order status</h2><select value={status} onChange={e=>setStatus(e.target.value as WooOrderStatus)} className="mt-4 h-10 w-full rounded-lg border bg-background px-3 text-sm">{statuses.map(x=><option key={x} value={x}>{x.replace("-"," ")}</option>)}</select><button disabled={saving} onClick={save} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">{saving?<Loader2 className="size-4 animate-spin"/>:<Save className="size-4"/>}Save status</button>{message&&<p className="mt-3 text-sm text-muted-foreground">{message}</p>}</section><section className="rounded-xl border bg-background p-5 shadow-sm"><h2 className="font-semibold">Payment</h2><p className="mt-3 text-sm">{order.payment_method_title||"Not specified"}</p><p className="mt-1 text-sm text-muted-foreground">{order.currency} {order.total}</p></section></div></div></div>;}
+
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft, Loader2, RefreshCw, Save } from "lucide-react";
+import { ProductThumbnail } from "@/components/product-thumbnail";
+import { ShipmentTracking } from "@/components/shipment-tracking";
+import type { WooOrder, WooOrderStatus } from "@/types/woocommerce";
+
+const statuses: WooOrderStatus[] = ["pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed"];
+
+export function OrderDetail({ id }: { id: string }) {
+  const [order, setOrder] = useState<WooOrder | null>(null);
+  const [status, setStatus] = useState<WooOrderStatus>("pending");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/woo/orders/${id}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to load order.");
+      setOrder(result);
+      setStatus(result.status);
+      setMessage("");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to load order.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => { queueMicrotask(() => { void load(); }); }, [load]);
+
+  async function save() {
+    setSaving(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/woo/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Update failed.");
+      setOrder(result);
+      setMessage("Order updated.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Update failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return <div className="grid min-h-[50vh] place-items-center"><Loader2 className="size-6 animate-spin" /></div>;
+  if (!order) return <div className="space-y-4"><Link href="/orders" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft className="size-4" />Back to orders</Link><p>{message || "Order not found."}</p></div>;
+
+  return <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <Link href="/orders" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" />Back to orders</Link>
+        <h1 className="text-2xl font-semibold">Order #{order.number}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{new Date(order.date_created).toLocaleString()}</p>
+      </div>
+      <button type="button" onClick={load} aria-label="Refresh order" className="rounded-lg border p-2 hover:bg-muted"><RefreshCw className="size-4" /></button>
+    </div>
+    <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+      <div className="space-y-4">
+        <section className="rounded-xl border bg-background shadow-sm">
+          <div className="border-b p-5"><h2 className="font-semibold">Items</h2></div>
+          <div className="divide-y">{order.line_items.map(item => <div key={item.id} className="flex items-center justify-between gap-4 p-5">
+            <div className="flex min-w-0 items-center gap-3"><ProductThumbnail src={item.image?.src} alt={item.name} size={56} /><div className="min-w-0"><p className="font-medium">{item.name}</p><p className="text-sm text-muted-foreground">Qty {item.quantity}</p></div></div>
+            <p className="shrink-0 font-medium">{order.currency} {item.total}</p>
+          </div>)}</div>
+          <div className="border-t p-5 text-right"><span className="text-sm text-muted-foreground">Total </span><span className="font-semibold">{order.currency} {order.total}</span></div>
+        </section>
+        <section className="rounded-xl border bg-background p-5 shadow-sm"><h2 className="font-semibold">Customer</h2><p className="mt-3 font-medium">{order.billing.first_name} {order.billing.last_name}</p><p className="text-sm text-muted-foreground">{order.billing.email}</p><p className="text-sm text-muted-foreground">{order.billing.phone}</p><p className="mt-3 text-sm">{[order.billing.address_1, order.billing.city, order.billing.state, order.billing.postcode].filter(Boolean).join(", ")}</p></section>
+      </div>
+      <div className="space-y-4">
+        <section className="rounded-xl border bg-background p-5 shadow-sm"><h2 className="font-semibold">Order status</h2><select value={status} onChange={event => setStatus(event.target.value as WooOrderStatus)} className="mt-4 h-10 w-full rounded-lg border bg-background px-3 text-sm">{statuses.map(value => <option key={value} value={value}>{value.replace("-", " ")}</option>)}</select><button type="button" disabled={saving} onClick={save} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Save status</button>{message && <p className="mt-3 text-sm text-muted-foreground">{message}</p>}</section>
+        <section className="rounded-xl border bg-background p-5 shadow-sm"><h2 className="font-semibold">Payment</h2><p className="mt-3 text-sm">{order.payment_method_title || "Not specified"}</p><p className="mt-1 text-sm text-muted-foreground">{order.currency} {order.total}</p></section>
+      </div>
+    </div>
+    <ShipmentTracking orderId={id} customerEmail={order.billing.email} />
+  </div>;
+}

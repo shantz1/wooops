@@ -9,7 +9,7 @@ WooOps is a self-hosted Next.js 16 application. It talks to the WooCommerce REST
 | Area | MVP capability |
 | --- | --- |
 | Overview | See the five latest orders and summaries calculated from those five orders. These are **not** store-wide analytics. |
-| Orders | Search, filter by status, paginate, open an order, change its status, and update selected orders in bulk. |
+| Orders | Search, filter by status, paginate, click anywhere on an order row to open it, view item images, change its status, and update selected orders in bulk. Add courier tracking and trigger a customer note email. |
 | Customers | Search and view the first 50 matching customers. |
 | Products and inventory | Search and view the first 50 matching products with image thumbnails; create simple draft or published products with an optional image URL; update non-negative stock quantities. |
 | Connection | Check the WooCommerce API connection on the Settings page. |
@@ -17,6 +17,8 @@ WooOps is a self-hosted Next.js 16 application. It talks to the WooCommerce REST
 | Webhooks | Verify WooCommerce signatures and log event topics. No event persistence or background sync yet. |
 
 The application also exposes order creation and deletion routes, but the MVP has no UI for those actions. Treat the API as an administrative interface. Product creation currently covers basic simple products and one existing image URL from the same store; file uploads, variations, categories, and advanced attributes still require WooCommerce.
+
+Shipment tracking is stored in the order's `wooops_shipments` metadata through the WooCommerce REST API. No extra WordPress plugin or WooOps database is required. On an order page, enter a courier and tracking number, optionally add an HTTPS tracking link and shipped date, then choose whether to trigger a customer note email. WooOps creates a customer-facing WooCommerce order note after saving tracking. WooCommerce handles email delivery; enable **Customer note** under **WooCommerce → Settings → Emails** and verify the store can send mail. A saved shipment with an email error remains saved and can be emailed again from the order page. This tracking metadata is specific to WooOps and does not automatically appear in other shipment tracking plugins.
 
 ## How it works
 
