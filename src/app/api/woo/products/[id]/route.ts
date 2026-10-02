@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { wooFetch } from "@/lib/woocommerce/client";
+import { wooErrorResponse } from "@/lib/woocommerce/errors";
 import { isId } from "@/lib/woocommerce/validation";
 
 type Context = { params: Promise<{ id: string }> };
@@ -8,7 +9,7 @@ export async function GET(_: NextRequest, { params }: Context) {
   const { id } = await params;
   if (!isId(id)) return NextResponse.json({ error: "Invalid product ID." }, { status: 400 });
   try { return NextResponse.json(await wooFetch(`products/${id}`)); }
-  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load product." }, { status: 502 }); }
+  catch (error) { return wooErrorResponse(error, "Unable to load product."); }
 }
 
 export async function PATCH(request: NextRequest, { params }: Context) {
@@ -22,6 +23,6 @@ export async function PATCH(request: NextRequest, { params }: Context) {
       method: "PUT", body: JSON.stringify({ stock_quantity: body.stock_quantity, manage_stock: true }),
     }));
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to update stock." }, { status: 502 });
+    return wooErrorResponse(error, "Unable to update stock.");
   }
 }
