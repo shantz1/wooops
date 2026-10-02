@@ -8,17 +8,26 @@ WooOps is a self-hosted Next.js 16 application. It talks to the WooCommerce REST
 
 | Area | MVP capability |
 | --- | --- |
-| Overview | See the five latest orders and summaries calculated from those five orders. These are **not** store-wide analytics. |
-| Orders | Search, filter by status, paginate, click anywhere on an order row to open it, view item images, change its status, and update selected orders in bulk. Add courier tracking and trigger a customer note email. |
-| Customers | Search and view the first 50 matching customers. |
+| Overview | See the five latest orders and summaries calculated from those five orders. These are **not** store-wide analytics. Amounts in different currencies are never added together, and guest orders are not counted as one customer. |
+| Orders | Search (debounced), filter by status, paginate, click anywhere on an order row to open it, and update selected orders in bulk after a confirmation. Custom statuses from extensions are shown as they are. |
+| Order workspace | Items with photos, SKU, quantity and variation details; a totals breakdown (items, discount, fees, shipping, tax, total, refunds); shipping and billing addresses with copy, email and phone actions; the customer's checkout note; guest or registered customer; payment method, paid date and transaction ID; order status; shipment tracking; and order notes. |
+| Order notes | Read private and customer-facing notes and add either kind. The email consequence of a customer-facing note is shown before it is added. |
+| Customers | Search and view the first 50 matching registered customers. Guest checkouts have no customer record. |
 | Products and inventory | Search and view the first 50 matching products with image thumbnails; create simple draft or published products with an optional image URL; update non-negative stock quantities. |
 | Connection | Check the WooCommerce API connection on the Settings page. |
-| API | Read and add order notes. There is no notes UI yet. |
 | Webhooks | Verify WooCommerce signatures and log event topics. No event persistence or background sync yet. |
+
+Every page works at phone, tablet and desktop widths; below desktop width the navigation opens from the menu button. Lists and panels show an explicit loading state, empty state and error with a **Retry** button. If a refresh fails, the last loaded data stays on screen with the error, and a newer search always replaces an older one. WooOps stops waiting for WooCommerce after 20 seconds and says so.
 
 The application also exposes order creation and deletion routes, but the MVP has no UI for those actions. Treat the API as an administrative interface. Product creation currently covers basic simple products and one existing image URL from the same store; file uploads, variations, categories, and advanced attributes still require WooCommerce.
 
-Shipment tracking is stored in the order's `wooops_shipments` metadata through the WooCommerce REST API. No extra WordPress plugin or WooOps database is required. On an order page, enter a courier and tracking number, optionally add an HTTPS tracking link and shipped date, then choose whether to trigger a customer note email. WooOps creates a customer-facing WooCommerce order note after saving tracking. WooCommerce handles email delivery; enable **Customer note** under **WooCommerce → Settings → Emails** and verify the store can send mail. A saved shipment with an email error remains saved and can be emailed again from the order page. This tracking metadata is specific to WooOps and does not automatically appear in other shipment tracking plugins.
+Shipment tracking is stored in the order's `wooops_shipments` metadata through the WooCommerce REST API. No extra WordPress plugin or WooOps database is required. On an order page, enter a courier and tracking number, optionally add an HTTPS tracking link and shipped date, then choose whether to also add a customer-facing tracking note (off by default). WooOps adds that note only after WooCommerce has confirmed the saved shipment. If the note fails, the shipment stays saved, the page says so, and **Try the email again** is offered. If WooCommerce does not answer in time, WooOps reloads the list and asks you to check it before retrying, because the change may have been applied. WooOps refuses to edit tracking when an order's `wooops_shipments` value is malformed or duplicated, rather than overwriting it. This tracking metadata is specific to WooOps and does not automatically appear in other shipment tracking plugins.
+
+Shipments are stored with a read-modify-write of one metadata value. Two people editing the same order's tracking at the same moment can overwrite each other's change; reload the order before editing if others may be working on it.
+
+### Customer emails
+
+Customer-facing notes (from the notes panel or a shipment) are sent by WooCommerce's **Customer note** email to the order's billing email. Enable it under **WooCommerce → Settings → Emails** and verify the store can send mail. WooOps reports only that WooCommerce **accepted** the note; it cannot confirm that an email was sent or delivered. Orders without a billing email cannot be emailed. Changing an order's status can also trigger WooCommerce's own status emails, such as **Completed order**, depending on store settings. Notes added by WooOps are attributed to WooCommerce (the system) rather than a named staff member.
 
 ## How it works
 
@@ -120,18 +129,21 @@ WooCommerce sends an initial ping when an active webhook is first saved. It can 
 
 ## Current limits
 
-WooOps is a **single-store MVP**. There are no named users, roles, audit log, rate limiting, persistent webhook jobs, or cross-store analytics. The dashboard summarizes only the latest five orders; customer and product tables currently display up to 50 results per search. The orders list has pagination. Test changes against a staging store before using real orders and inventory.
+WooOps is a **single-store MVP**. Everyone signs in with one shared password, independent of WordPress accounts; there are no named users, roles, audit log, rate limiting, persistent webhook jobs, or cross-store analytics. The dashboard summarizes only the latest five orders; customer and product tables currently display up to 50 results per search. The orders list has pagination. Test changes against a staging store before using real orders and inventory.
 
-The next useful milestones are a full store dashboard, pagination for products and customers, an order notes UI, advanced product editing, stronger multi-user authentication, and live integration testing with a WooCommerce store.
+Order workspace limits: the totals breakdown uses WooCommerce's stored amounts and shows WooCommerce's own total; if the lines do not add up exactly (for example because of an extension), the page says so. Refunds are shown but cannot be created. Addresses, line items and tracking entries cannot be edited after saving (remove and re-add a tracking entry instead). Shipments do not record item quantities, and WooOps has no delivered status. Product stock saved from the products table still enables stock management for that product.
+
+The next useful milestones are pagination for products and customers, correct managed/unmanaged stock handling, product editing, customer history, a full store dashboard, stronger multi-user authentication, and live integration testing with a staging WooCommerce store.
 
 ## Development
 
 ```bash
 npm run lint
 npm run build
+npm test
 ```
 
-GitHub Actions runs `npm ci`, lint, and build for pushes and pull requests to `main`.
+`npm test` runs the order totals and currency arithmetic tests with Node's built-in test runner and needs Node.js 22.18 or newer, which loads the TypeScript sources directly. GitHub Actions runs `npm ci`, lint, and build for pushes and pull requests to `main`.
 
 ## License
 
