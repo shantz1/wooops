@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>WooOps WO</title>
+  <defs>
+    <linearGradient id="background" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#10B981"/>
+      <stop offset=".48" stop-color="#0891B2"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="8" y1="0" x2="42" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity=".22"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#background)"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" stroke="white" stroke-opacity=".18"/>
+  <path d="M0 0h64v24C40 13 21 42 0 29V0Z" fill="url(#shine)"/>
+  <path d="m10 23 4 19 7-15 7 15 4-19" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="38" y="23" width="15" height="19" rx="7.5" stroke="white" stroke-width="4.5"/>
+</svg>

@@ -1,5 +1,7 @@
 "use client";
 
+import { usePanelPreferences } from "@/components/panel-preferences";
+
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Search, ShoppingCart } from "lucide-react";
@@ -15,6 +17,7 @@ import type { KnownOrderStatus, WooOrder } from "@/types/woocommerce";
 type OrdersResponse = { configured?: boolean; orders: WooOrder[]; total: number; pages: number };
 
 export function OrdersTable() {
+  const { timeZone } = usePanelPreferences();
   const [selected, setSelected] = useState<number[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -33,7 +36,7 @@ export function OrdersTable() {
 
   async function bulk() {
     if (!visibleSelected.length || saving) return;
-    if (!window.confirm(`Change ${visibleSelected.length} order(s) to "${statusLabel(bulkStatus)}"? WooCommerce may email customers about status changes.`)) return;
+    if (!window.confirm(`Change ${visibleSelected.length} order(s) to "${statusLabel(bulkStatus)}"? Store may email customers about status changes.`)) return;
     setSaving(true);
     setBulkResult(null);
     try {
@@ -65,13 +68,13 @@ export function OrdersTable() {
     {visibleSelected.length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-background p-3 shadow-sm">
       <span className="text-sm font-medium">{visibleSelected.length} selected</span>
       <select aria-label="New status for selected orders" value={bulkStatus} onChange={event => setBulkStatus(event.target.value as KnownOrderStatus)} className="h-9 rounded-md border px-2 text-sm capitalize">{editableStatuses.map(value => <option key={value} value={value}>{statusLabel(value)}</option>)}</select>
-      <button type="button" disabled={saving} onClick={bulk} className="inline-flex h-9 items-center gap-2 rounded-md bg-foreground px-3 text-sm font-medium text-background disabled:opacity-50">{saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}{saving ? "Updating..." : "Update status"}</button>
+      <button type="button" disabled={saving} onClick={bulk} className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50">{saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}{saving ? "Updating..." : "Update status"}</button>
     </div>}
     {bulkResult && <Notice tone={bulkResult.tone}>{bulkResult.message}</Notice>}
     {error && data && <Notice tone="error" action={<RetryButton onRetry={reload} busy={loading} />}>Showing the last loaded orders. {error}</Notice>}
     <div className="overflow-hidden rounded-xl border bg-background shadow-sm">
       {!data ? (loading ? <LoadingState label="Loading orders…" /> : <ErrorState message={error || "Could not load orders."} onRetry={reload} busy={loading} />)
-        : data.configured === false ? <EmptyState icon={ShoppingCart} title="WooCommerce is not configured">Add the store URL and API keys on the server, then check Settings.</EmptyState>
+        : data.configured === false ? <EmptyState icon={ShoppingCart} title="Store is not configured">Add the store URL and API keys on the server, then check Settings.</EmptyState>
         : orders.length === 0 ? <EmptyState icon={ShoppingCart} title="No orders found">{debouncedSearch || status !== "all" ? "Try a different search or status." : undefined}</EmptyState>
         : <div className={`overflow-x-auto transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}><table className="w-full text-sm">
           <thead className="border-b bg-muted/30 text-left text-xs text-muted-foreground"><tr><th className="w-12 px-5 py-3"><input type="checkbox" aria-label="Select all orders on this page" checked={allSelected} onChange={event => setSelected(event.target.checked ? orders.map(order => order.id) : [])} /></th><th className="px-3 py-3">Order</th><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Payment</th><th className="px-5 py-3">Total</th><th className="px-5 py-3">Date</th></tr></thead>
@@ -82,7 +85,7 @@ export function OrdersTable() {
             <td className="px-5 py-4"><OrderStatusBadge status={order.status} /></td>
             <td className="px-5 py-4 text-muted-foreground">{order.payment_method_title || "—"}</td>
             <td className="whitespace-nowrap px-5 py-4 font-medium tabular-nums">{formatMoney(order.total, order.currency)}</td>
-            <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">{wooDate(order.date_created, order.date_created_gmt)?.toLocaleDateString() || "—"}</td>
+            <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">{wooDate(order.date_created, order.date_created_gmt)?.toLocaleDateString(undefined, { timeZone }) || "—"}</td>
           </tr>)}</tbody>
         </table></div>}
       <div className="flex items-center justify-between border-t px-5 py-3 text-sm">

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Boxes, LayoutDashboard, Loader2, LogOut, Menu, Package, Settings, ShoppingCart, Users, X } from "lucide-react";
+import { BarChart3, Boxes, LayoutDashboard, Loader2, LogOut, Menu, Package, Settings, ShoppingCart, Users, X } from "lucide-react";
+import { usePanelPreferences } from "@/components/panel-preferences";
 
 const navigation = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
@@ -11,6 +13,7 @@ const navigation = [
   { href: "/products", label: "Products", icon: Package },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/inventory", label: "Inventory", icon: Boxes },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
 const focusRing = "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
@@ -24,7 +27,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
     const active = isActive(pathname, href);
     return (
       <Link key={href} href={href} onClick={onNavigate} aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${focusRing} ${active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}>
+        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${focusRing} ${active ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}>
         <Icon className="size-4" aria-hidden="true" />
         {label}
       </Link>
@@ -41,10 +44,11 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
 }
 
 function Brand() {
+  const { preferences } = usePanelPreferences();
   return (
     <div className="flex items-center gap-2.5 font-semibold tracking-tight">
-      <div className="grid size-8 place-items-center rounded-lg bg-foreground text-background" aria-hidden="true">W</div>
-      <span>WooOps</span>
+      <Image src="/wo.svg" width={36} height={36} alt="" className="size-9 shrink-0 rounded-lg shadow-sm" />
+      <span className="max-w-40 truncate">{preferences.name}</span>
     </div>
   );
 }
@@ -72,7 +76,7 @@ function SignOut() {
           <div className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold" aria-hidden="true">S</div>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">Store Admin</p>
-            <p className="truncate text-xs text-muted-foreground">{failed ? "Sign out failed — retry" : "Shared WooOps login"}</p>
+            <p className="truncate text-xs text-muted-foreground">{failed ? "Sign out failed — retry" : "Operations workspace"}</p>
           </div>
         </div>
         <button type="button" onClick={signOut} disabled={busy} aria-label="Sign out" title="Sign out"
@@ -132,9 +136,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className={`-ml-1 rounded-md p-2 hover:bg-muted lg:hidden ${focusRing}`}>
               <Menu className="size-5" aria-hidden="true" />
             </button>
-            <div className="min-w-0"><p className="truncate text-sm font-medium">Operations</p><p className="truncate text-xs text-muted-foreground">WooCommerce control center</p></div>
+            <div className="min-w-0"><p className="truncate text-sm font-medium">Operations</p><p className="truncate text-xs text-muted-foreground">Your store, in focus</p></div>
           </div>
-          <div className="text-xs text-muted-foreground">WooCommerce</div>
+          <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">Store workspace</div>
         </header>
         <main id="main" tabIndex={-1} className="mx-auto max-w-[1500px] p-4 outline-none sm:p-5 lg:p-8">{children}</main>
       </div>

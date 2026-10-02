@@ -1,5 +1,7 @@
 "use client";
 
+import { usePanelPreferences } from "@/components/panel-preferences";
+
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, Check, Copy, Loader2, Mail, MapPin, Phone, Save, UserRound } from "lucide-react";
@@ -78,17 +80,18 @@ function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooO
         {editableStatuses.map(value => <option key={value} value={value}>{statusLabel(value)}</option>)}
       </select>
       <button type="button" disabled={saving || status === order.status} onClick={save}
-        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">
+        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
         {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}Save status
       </button>
-      <p className="mt-3 text-xs text-muted-foreground">Status changes are separate from shipments. WooCommerce may send its own status emails (for example, Completed order) depending on store settings.</p>
-      {custom && <p className="mt-2 text-xs text-muted-foreground">This order uses a custom status from WooCommerce or an extension. WooOps can move it to a standard status but cannot set custom ones.</p>}
+      <p className="mt-3 text-xs text-muted-foreground">Status changes are separate from shipments. Store may send its own status emails (for example, Completed order) depending on store settings.</p>
+      {custom && <p className="mt-2 text-xs text-muted-foreground">This order uses a custom status from your store or an extension. WooOps can move it to a standard status but cannot set custom ones.</p>}
       {result && <Notice tone={result.tone} className="mt-3">{result.message}</Notice>}
     </section>
   );
 }
 
 export function OrderDetail({ id }: { id: string }) {
+  const { timeZone } = usePanelPreferences();
   const { data: order, setData: setOrder, error, loading, reload } = useRemote<WooOrder>(`/api/woo/orders/${id}`, "Unable to load order.");
   const [notesVersion, setNotesVersion] = useState(0);
   const refreshNotes = () => setNotesVersion(current => current + 1);
@@ -114,7 +117,7 @@ export function OrderDetail({ id }: { id: string }) {
           <OrderStatusBadge status={order.status} />
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Placed <time dateTime={created?.toISOString()}>{formatDateTime(created)}</time>{created && <> ({relativeAge(created)})</>} · {order.payment_method_title || "Payment method not recorded"}
+          Placed <time dateTime={created?.toISOString()}>{formatDateTime(created, timeZone)}</time>{created && <> ({relativeAge(created)})</>} · {order.payment_method_title || "Payment method not recorded"}
         </p>
       </div>
       <RetryButton onRetry={reload} busy={loading} label="Refresh order" />
@@ -165,10 +168,10 @@ export function OrderDetail({ id }: { id: string }) {
           <h2 id="payment-heading" className="font-semibold">Payment</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Method</dt><dd className="text-right">{order.payment_method_title || order.payment_method || "Not recorded"}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Paid</dt><dd className="text-right">{paid ? formatDateTime(paid) : "No paid date recorded"}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Paid</dt><dd className="text-right">{paid ? formatDateTime(paid, timeZone) : "No paid date recorded"}</dd></div>
             {order.transaction_id && <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Transaction</dt><dd className="break-all text-right font-mono text-xs">{order.transaction_id}</dd></div>}
           </dl>
-          {!paid && <p className="mt-3 text-xs text-muted-foreground">WooCommerce has not recorded a payment date. For cash on delivery, bank transfer or cheque, payment is confirmed manually by the store.</p>}
+          {!paid && <p className="mt-3 text-xs text-muted-foreground">Store has not recorded a payment date. For cash on delivery, bank transfer or cheque, payment is confirmed manually by the store.</p>}
         </section>
 
         <OrderNotes orderId={id} customerEmail={order.billing.email || undefined} refreshKey={notesVersion} />

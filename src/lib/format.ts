@@ -24,7 +24,7 @@ export function plainText(html: string) {
 
 /**
  * WooCommerce returns `*_gmt` timestamps without a zone suffix and local timestamps in the store timezone.
- * Prefer the GMT value so the instant is correct in the viewer's timezone.
+ * Prefer the GMT value so the instant is correct in the store timezone.
  */
 export function wooDate(local?: string | null, gmt?: string | null) {
   const value = gmt ? `${gmt.replace(/Z$/, "")}Z` : local;
@@ -33,8 +33,8 @@ export function wooDate(local?: string | null, gmt?: string | null) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function formatDateTime(date: Date | null) {
-  return date ? date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
+export function formatDateTime(date: Date | null, timeZone = "UTC") {
+  return date ? date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", timeZone }) : "—";
 }
 
 export function relativeAge(date: Date | null, now = Date.now()) {

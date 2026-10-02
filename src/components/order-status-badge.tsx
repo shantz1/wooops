@@ -21,7 +21,7 @@ export function statusLabel(status: WooOrderStatus) {
 export function OrderStatusBadge({ status }: { status: WooOrderStatus }) {
   const known = status in styles;
   return (
-    <span title={known ? undefined : "Custom status from WooCommerce or an extension"}
+    <span title={known ? undefined : "Custom status from your store or an extension"}
       className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium capitalize ${known ? styles[status as KnownOrderStatus] : custom}`}>
       {statusLabel(status)}
     </span>

@@ -72,22 +72,22 @@ export function OrderItems({ order }: { order: WooOrder }) {
             <dt>Coupons</dt><dd className="text-right">{order.coupon_lines!.map(coupon => coupon.code).join(", ")}</dd>
           </div>}
           <div className="flex justify-between gap-4 border-t pt-2 font-semibold">
-            <dt>Order total</dt><dd className="tabular-nums">{formatMoney(totals.total, order.currency)}</dd>
+            <dt>Order total</dt><dd className="tabular-nums">{money(order.total)}</dd>
           </div>
           {totals.refunded && <>
             <div className="flex justify-between gap-4 text-violet-800 dark:text-violet-300">
               <dt>Refunded ({order.refunds!.length})</dt><dd className="tabular-nums">−{formatMoney(totals.refunded, order.currency)}</dd>
             </div>
-            <div className="flex justify-between gap-4 font-medium">
+            {totals.netAfterRefunds && <div className="flex justify-between gap-4 font-medium">
               <dt>Total after refunds</dt><dd className="tabular-nums">{formatMoney(totals.netAfterRefunds!, order.currency)}</dd>
-            </div>
+            </div>}
           </>}
         </dl>
         {(order.shipping_lines || []).length > 0 && <p className="mt-3 text-right text-xs text-muted-foreground">Shipping method: {order.shipping_lines!.map(line => plainText(line.method_title)).join(", ")}</p>}
         {(!totals.valid || !totals.reconciles) && <Notice tone="info" className="mt-4">
           {totals.valid
-            ? "These lines do not add up exactly to WooCommerce's order total (for example because of rounding or an extension). The order total shown is WooCommerce's own value."
-            : "WooCommerce returned an amount WooOps could not read, so the breakdown may be incomplete. The order total shown is WooCommerce's own value."}
+            ? "These lines do not add up exactly to Store's order total (for example because of rounding or an extension). The order total shown is Store's own value."
+            : "Store returned an amount WooOps could not read, so the breakdown may be incomplete. The order total shown is Store's own value."}
         </Notice>}
       </div>
     </section>

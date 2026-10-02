@@ -1,5 +1,7 @@
 "use client";
 
+import { usePanelPreferences } from "@/components/panel-preferences";
+
 import { useRef, useState, type FormEvent } from "react";
 import { Loader2, Lock, Mail, MessageSquareText } from "lucide-react";
 import { EmptyState, ErrorState, LoadingState, Notice, RetryButton } from "@/components/ui/feedback";
@@ -15,6 +17,7 @@ type Audience = "private" | "customer";
  * WooCommerce emails them when its "Customer note" email is enabled. Acceptance is not proof of delivery.
  */
 export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: string; customerEmail?: string; refreshKey: number }) {
+  const { timeZone } = usePanelPreferences();
   const endpoint = `/api/woo/orders/${orderId}/notes`;
   const { data: notes, error, loading, reload } = useRemote<WooOrderNote[]>(endpoint, "Could not load notes.", refreshKey);
   const [text, setText] = useState("");
@@ -30,8 +33,8 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
     const note = text.trim();
     if (!note || inFlight.current) return;
     if (toCustomer && !window.confirm(customerEmail
-      ? `Add a customer-facing note? WooCommerce will show it to the customer and may email it to ${customerEmail}. This cannot be recalled.`
-      : "Add a customer-facing note? This order has no billing email, so WooCommerce cannot email it.")) return;
+      ? `Add a customer-facing note? Store will show it to the customer and may email it to ${customerEmail}. This cannot be recalled.`
+      : "Add a customer-facing note? This order has no billing email, so Store cannot email it.")) return;
     inFlight.current = true;
     setSaving(true);
     setResult(null);
@@ -41,7 +44,7 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
       setAudience("private");
       setResult(toCustomer
         ? { tone: "success", message: customerEmail
-          ? "Customer note added. WooCommerce accepted it; whether an email arrives depends on the store's Customer note email setting and mail delivery."
+          ? "Customer note added. Store accepted it; whether an email arrives depends on the store's Customer note email setting and mail delivery."
           : "Customer note added. No email was possible because the order has no billing email." }
         : { tone: "success", message: "Private note added." });
       reload();
@@ -82,13 +85,13 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
         </fieldset>
         {toCustomer && <Notice tone="warning">
           {customerEmail
-            ? <>WooCommerce will show this note to the customer and send its <strong>Customer note</strong> email to <strong className="break-all">{customerEmail}</strong> if that email is enabled. It cannot be recalled.</>
-            : <>This order has no billing email, so WooCommerce cannot email this note.</>}
+            ? <>Store will show this note to the customer and send its <strong>Customer note</strong> email to <strong className="break-all">{customerEmail}</strong> if that email is enabled. It cannot be recalled.</>
+            : <>This order has no billing email, so Store cannot email this note.</>}
         </Notice>}
         {result && <Notice tone={result.tone}>{result.message}</Notice>}
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-muted-foreground">{text.length}/5000</span>
-          <button disabled={saving || !text.trim()} className="inline-flex h-10 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">
+          <button disabled={saving || !text.trim()} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
             {saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}{toCustomer ? "Add note for customer" : "Add private note"}
           </button>
         </div>
@@ -96,7 +99,7 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
 
       {error && notes && <Notice tone="error" className="m-5 mb-0" action={<RetryButton onRetry={reload} busy={loading} />}>Showing the last loaded notes. {error}</Notice>}
       {!notes ? (loading ? <LoadingState label="Loading notes…" className="py-10" /> : <ErrorState message={error || "Could not load notes."} onRetry={reload} className="py-10" />)
-        : notes.length === 0 ? <EmptyState title="No notes yet" className="py-10">Status changes and notes added in WooCommerce appear here.</EmptyState>
+        : notes.length === 0 ? <EmptyState title="No notes yet" className="py-10">Status changes and notes added in your store appear here.</EmptyState>
         : <ol className="divide-y">
           {notes.map(note => {
             const created = wooDate(note.date_created, note.date_created_gmt);
@@ -106,9 +109,9 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
                   {note.customer_note
                     ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200"><Mail className="size-3" aria-hidden="true" />Customer-facing</span>
                     : <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-medium text-foreground"><Lock className="size-3" aria-hidden="true" />Private</span>}
-                  <span>{note.author || "WooCommerce"}</span>
+                  <span>{!note.author || note.author === "WooCommerce" ? "Store system" : note.author}</span>
                   <span aria-hidden="true">·</span>
-                  <time dateTime={created?.toISOString()}>{formatDateTime(created)}</time>
+                  <time dateTime={created?.toISOString()}>{formatDateTime(created, timeZone)}</time>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap break-words text-sm">{plainText(note.note)}</p>
               </li>

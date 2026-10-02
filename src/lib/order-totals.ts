@@ -42,11 +42,12 @@ export function orderTotals(order: TotalsInput): OrderTotals {
     rows.push({ key: "tax", label: "Tax", amount: round(tax.value), hint: order.prices_include_tax ? "Store prices include tax" : undefined });
   }
 
-  const computed = addDecimals(items.value, negate(discount.value), fees.value, shipping.value, tax.value);
+  // Compare the amounts actually displayed, including each row's rounding.
+  const computed = addDecimals(...rows.map(row => row.amount));
   const hasRefunds = (order.refunds || []).length > 0;
   // WooCommerce reports refund totals as negative amounts.
   const refunded = hasRefunds ? round(negate(refunds.value)) : null;
-  const netAfterRefunds = hasRefunds ? round(addDecimals(total, refunds.value)) : null;
+  const netAfterRefunds = hasRefunds && parsedTotal ? round(addDecimals(total, refunds.value)) : null;
 
   return {
     rows,

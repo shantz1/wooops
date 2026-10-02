@@ -14,11 +14,12 @@ type ShipmentResponse = {
   email_requested?: boolean;
   email_error?: string;
   email_shipment_id?: string;
+  email_outcome_unknown?: boolean;
 };
 
 type Feedback = { tone: "success" | "warning" | "error" | "info"; message: string; retryEmailFor?: Shipment };
 
-const emailCaveat = "WooCommerce accepted the customer note; delivery depends on its Customer note email setting and the store's mail service.";
+const emailCaveat = "Store accepted the customer note; delivery depends on its Customer note email setting and the store's mail service.";
 
 export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { orderId: string; customerEmail?: string; onNotesChanged?: () => void }) {
   const endpoint = `/api/woo/orders/${orderId}/shipments`;
@@ -66,6 +67,10 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
       setCarrier(""); setNumber(""); setLink(""); setDate(""); setNotify(false);
       if (result.email_error) {
         const shipment = result.shipments?.find(item => item.id === result.email_shipment_id);
+        if (result.email_outcome_unknown) {
+          onNotesChanged?.();
+          return { tone: "warning", message: `Shipment saved. The customer note outcome is unknown: ${result.email_error}` };
+        }
         return { tone: "warning", message: `Shipment saved, but the customer note was not added: ${result.email_error}`, retryEmailFor: shipment };
       }
       if (result.email_requested) {
@@ -86,7 +91,7 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
   }
 
   function emailCustomer(shipment: Shipment) {
-    if (!window.confirm(`Add a customer-facing note about tracking number ${shipment.tracking_number}? WooCommerce may email it to ${customerEmail}.`)) return;
+    if (!window.confirm(`Add a customer-facing note about tracking number ${shipment.tracking_number}? Store may email it to ${customerEmail}.`)) return;
     void mutate(async () => {
       await fetchJson<ShipmentResponse>(endpoint, { method: "PATCH", json: { shipment_id: shipment.id } });
       onNotesChanged?.();
@@ -99,7 +104,7 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2"><Truck className="size-5" aria-hidden="true" /><h2 id="shipments-heading" className="font-semibold">Shipment tracking</h2></div>
-          <p className="mt-1 text-sm text-muted-foreground">Stored on this WooCommerce order. Adding tracking does not change the order status, and a tracking link is not proof of delivery.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Stored on this order. Adding tracking does not change the order status, and a tracking link is not proof of delivery.</p>
         </div>
         <RetryButton onRetry={reload} busy={loading} label="Reload" />
       </div>
@@ -143,10 +148,10 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
         </div>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={notify && Boolean(customerEmail)} disabled={!customerEmail} onChange={event => setNotify(event.target.checked)} className="mt-1" />
-          <span>Also add a customer-facing tracking note{customerEmail ? <>, which WooCommerce may email to <span className="break-all">{customerEmail}</span></> : " (no billing email on this order, so no email is possible)"}</span>
+          <span>Also add a customer-facing tracking note{customerEmail ? <>, which Store may email to <span className="break-all">{customerEmail}</span></> : " (no billing email on this order, so no email is possible)"}</span>
         </label>
-        <p className="text-xs text-muted-foreground">Email depends on WooCommerce&apos;s Customer note email being enabled and the store being able to send mail. WooOps cannot confirm delivery.</p>
-        <button disabled={saving || !shipments} className="inline-flex h-10 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">
+        <p className="text-xs text-muted-foreground">Email depends on Store&apos;s Customer note email being enabled and the store being able to send mail. WooOps cannot confirm delivery.</p>
+        <button disabled={saving || !shipments} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
           {saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />} Add shipment{notify && customerEmail ? " and notify customer" : ""}
         </button>
       </form>

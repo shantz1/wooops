@@ -23,7 +23,7 @@ async function writeShipments(id: string, metaId: number | undefined, shipments:
     return readShipments(saved).shipments;
   } catch (error) {
     if (error instanceof WooApiError && error.status === 504) {
-      throw new WooApiError("WooCommerce did not confirm the tracking change in time. It may or may not have been saved; reload shipments before retrying.", 504);
+      throw new WooApiError("Store did not confirm the tracking change in time. It may or may not have been saved; reload shipments before retrying.", 504);
     }
     throw error;
   }
@@ -62,8 +62,8 @@ async function notifyCustomer(id: string, order: OrderWithMeta, shipment: Shipme
       body: JSON.stringify({ note, customer_note: true }),
     });
   } catch (error) {
-    if (error instanceof WooApiError && error.status === 504) {
-      throw new WooApiError("WooCommerce did not confirm the customer note in time. Check the order notes before sending again.", 504);
+    if (error instanceof WooApiError && (error.status === 504 || error.status === 502)) {
+      throw new WooApiError("Store did not confirm the customer note. It may have been added; check the order notes before sending again.", error.status);
     }
     throw error;
   }
@@ -109,8 +109,8 @@ export async function POST(request: NextRequest, { params }: Context) {
       shipped_at: body.shipped_at,
     };
     saved = await writeShipments(id, metaId, [...shipments, shipment]);
-    if (!saved.some(item => item.id === shipment.id)) {
-      return NextResponse.json({ error: "WooCommerce responded, but the new shipment was not in the saved order. Reload before retrying.", shipments: saved }, { status: 502 });
+    if (!saved.some(item => item.id === shipment.id && item.carrier === shipment.carrier && item.tracking_number === shipment.tracking_number && item.tracking_url === shipment.tracking_url && item.shipped_at === shipment.shipped_at)) {
+      return NextResponse.json({ error: "Store responded, but the new shipment was not in the saved order. Reload before retrying.", shipments: saved }, { status: 502 });
     }
   } catch (error) {
     return wooErrorResponse(error, "Unable to add shipment.");
@@ -125,6 +125,7 @@ export async function POST(request: NextRequest, { params }: Context) {
     return NextResponse.json({
       saved: true, shipments: saved, email_requested: false, email_shipment_id: shipment.id,
       email_error: error instanceof Error ? error.message : "The customer note could not be added.",
+      email_outcome_unknown: error instanceof WooApiError && (error.status === 504 || error.status === 502),
     }, { status: 201 });
   }
 }
@@ -158,7 +159,7 @@ export async function DELETE(request: NextRequest, { params }: Context) {
     if (updated.length === shipments.length) return NextResponse.json({ error: "Shipment not found. It may already have been removed.", shipments }, { status: 404 });
     const saved = await writeShipments(id, metaId, updated);
     if (saved.some(item => item.id === body.shipment_id)) {
-      return NextResponse.json({ error: "WooCommerce responded, but the shipment is still on the order. Reload before retrying.", shipments: saved }, { status: 502 });
+      return NextResponse.json({ error: "Store responded, but the shipment is still on the order. Reload before retrying.", shipments: saved }, { status: 502 });
     }
     return NextResponse.json({ shipments: saved });
   } catch (error) {

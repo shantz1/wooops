@@ -60,3 +60,17 @@ test("respects zero-decimal store totals", () => {
 test("falls back when the currency code is unknown", () => {
   assert.equal(formatMoney("12.00", "NOT-A-CODE"), "NOT-A-CODE 12.00");
 });
+
+test("flags differences between the displayed rounded rows and the stored total", () => {
+  const totals = orderTotals({ total: "1.01", line_items: [{ subtotal: "1.004" }], fee_lines: [{ total: "0.004" }] });
+  assert.equal(text(totals.rows[0].amount), "1.00");
+  assert.equal(text(totals.rows[1].amount), "0.00");
+  assert.equal(totals.reconciles, false);
+});
+
+test("does not calculate net refunds from an unreadable order total", () => {
+  const totals = orderTotals({ total: "invalid", line_items: [], refunds: [{ total: "-5.00" }] });
+  assert.equal(totals.valid, false);
+  assert.equal(totals.reconciles, false);
+  assert.equal(totals.netAfterRefunds, null);
+});

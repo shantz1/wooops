@@ -62,7 +62,7 @@ export function CreateProductForm() {
       <div>
         <Link href="/products" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" />Back to products</Link>
         <h1 className="mt-4 text-2xl font-semibold">Add a simple product</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Create a draft first, then publish it when ready. WooCommerce remains the source of truth.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Create a draft first, then publish it when ready. Store remains the source of truth.</p>
       </div>
       <form onSubmit={submit} className="space-y-5 rounded-xl border bg-background p-6 shadow-sm">
         <label className="block text-sm font-medium">Product name
@@ -85,7 +85,7 @@ export function CreateProductForm() {
           </label>
           <ProductThumbnail key={imageUrl} src={imageUrl.trim()} alt="Product image preview" size={56} />
         </div>
-        <p className="-mt-3 text-xs text-muted-foreground">Use an existing Media Library image URL from this WooCommerce store. Direct file upload is not available yet.</p>
+        <p className="-mt-3 text-xs text-muted-foreground">Use an existing Media Library image URL from this store. Direct file upload is not available yet.</p>
         <label className="flex items-center gap-3 text-sm font-medium">
           <input type="checkbox" checked={manageStock} onChange={event => setManageStock(event.target.checked)} /> Manage stock
         </label>
@@ -101,7 +101,7 @@ export function CreateProductForm() {
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <div className="flex justify-end gap-3 border-t pt-5">
           <Link href="/products" className="inline-flex h-10 items-center rounded-lg border px-4 text-sm">Cancel</Link>
-          <button disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">
+          <button disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
             {saving && <Loader2 className="size-4 animate-spin" />} Create product
           </button>
         </div>
