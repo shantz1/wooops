@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "test:integration": "node --test test/integration/shipments.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

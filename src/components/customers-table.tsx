@@ -1,2 +1,39 @@
-"use client";import{useCallback,useEffect,useState}from"react";import{Loader2,Search,Users}from"lucide-react";import type{WooCustomer}from"@/types/woocommerce";
-export function CustomersTable(){const[items,setItems]=useState<WooCustomer[]>([]),[search,setSearch]=useState(""),[loading,setLoading]=useState(true),[error,setError]=useState("");const load=useCallback(async()=>{setLoading(true);setError("");try{const r=await fetch("/api/woo/customers?per_page=50&search="+encodeURIComponent(search));const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to load customers");setItems(d.customers||[])}catch(e){setError(e instanceof Error?e.message:"Unable to load customers")}finally{setLoading(false)}},[search]);useEffect(()=>{queueMicrotask(()=>{void load()})},[load]);return <div className="space-y-4"><div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search customers..." className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm"/></div><div className="overflow-hidden rounded-xl border bg-background shadow-sm">{loading?<div className="p-16 text-center"><Loader2 className="mx-auto size-5 animate-spin"/></div>:error?<div className="p-16 text-center text-sm text-destructive">{error}</div>:items.length===0?<div className="p-16 text-center text-muted-foreground"><Users className="mx-auto size-7"/><p className="mt-3">No customers found.</p></div>:<div className="overflow-x-auto"><table className="w-full text-sm"><thead className="border-b bg-muted/30 text-left text-xs text-muted-foreground"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Email</th><th className="px-5 py-3">Phone</th><th className="px-5 py-3">Orders</th><th className="px-5 py-3">Spent</th></tr></thead><tbody className="divide-y">{items.map(c=><tr key={c.id}><td className="px-5 py-4 font-medium">{c.first_name} {c.last_name}</td><td className="px-5 py-4">{c.email||"—"}</td><td className="px-5 py-4 text-muted-foreground">{c.billing?.phone||"—"}</td><td className="px-5 py-4">{c.orders_count??"—"}</td><td className="px-5 py-4">{c.total_spent??"—"}</td></tr>)}</tbody></table></div>}</div></div>;}
+"use client";
+
+import { useState } from "react";
+import { Search, Users } from "lucide-react";
+import { EmptyState, ErrorState, LoadingState, Notice, RetryButton } from "@/components/ui/feedback";
+import { useDebouncedValue, useRemote } from "@/lib/use-remote";
+import type { WooCustomer } from "@/types/woocommerce";
+
+type CustomersResponse = { configured?: boolean; customers: WooCustomer[]; total: number; pages: number };
+
+export function CustomersTable() {
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { data, error, loading, reload } = useRemote<CustomersResponse>(
+    `/api/woo/customers?${new URLSearchParams({ per_page: "50", search: debouncedSearch })}`, "Unable to load customers.");
+  const items = data?.customers || [];
+
+  return <div className="space-y-4">
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      <input type="search" aria-label="Search customers" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search customers..." className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm" />
+    </div>
+    {error && data && <Notice tone="error" action={<RetryButton onRetry={reload} busy={loading} />}>Showing the last loaded customers. {error}</Notice>}
+    <div className="overflow-hidden rounded-xl border bg-background shadow-sm">
+      {!data ? (loading ? <LoadingState label="Loading customers…" /> : <ErrorState message={error || "Unable to load customers."} onRetry={reload} busy={loading} />)
+        : items.length === 0 ? <EmptyState icon={Users} title="No customers found">Guest checkouts have no customer record and appear only on their orders.</EmptyState>
+        : <div className={`overflow-x-auto transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}><table className="w-full text-sm">
+          <thead className="border-b bg-muted/30 text-left text-xs text-muted-foreground"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Email</th><th className="px-5 py-3">Phone</th><th className="px-5 py-3">Orders</th><th className="px-5 py-3">Spent</th></tr></thead>
+          <tbody className="divide-y">{items.map(customer => <tr key={customer.id}>
+            <td className="px-5 py-4 font-medium">{customer.first_name} {customer.last_name}</td>
+            <td className="px-5 py-4">{customer.email || "—"}</td>
+            <td className="px-5 py-4 text-muted-foreground">{customer.billing?.phone || "—"}</td>
+            <td className="px-5 py-4">{customer.orders_count ?? "—"}</td>
+            <td className="px-5 py-4">{customer.total_spent ?? "—"}</td>
+          </tr>)}</tbody>
+        </table></div>}
+    </div>
+  </div>;
+}

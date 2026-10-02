@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isWooCommerceConfigured, wooFetch, wooFetchWithHeaders } from "@/lib/woocommerce/client";
+import { wooErrorResponse } from "@/lib/woocommerce/errors";
+import { pageParam, searchParam } from "@/lib/woocommerce/validation";
 import type { WooProduct } from "@/types/woocommerce";
 
 function validStoreImageUrl(value: string) {
@@ -18,17 +20,18 @@ export async function GET(request: NextRequest) {
   if (!isWooCommerceConfigured()) return NextResponse.json({ configured: false, products: [], total: 0, pages: 0 });
   const params = request.nextUrl.searchParams;
   const query = new URLSearchParams({
-    page: params.get("page") || "1",
-    per_page: params.get("per_page") || "20",
+    page: String(pageParam(params.get("page"), 1)),
+    per_page: String(pageParam(params.get("per_page"), 20, 100)),
     orderby: "date",
     order: "desc",
   });
-  if (params.get("search")) query.set("search", params.get("search")!);
+  const search = searchParam(params.get("search"));
+  if (search) query.set("search", search);
   try {
     const result = await wooFetchWithHeaders<WooProduct[]>(`products?${query}`);
     return NextResponse.json({ configured: true, products: result.data, total: result.total, pages: result.pages });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load products." }, { status: 502 });
+    return wooErrorResponse(error, "Unable to load products.");
   }
 }
 
@@ -57,6 +60,6 @@ export async function POST(request: NextRequest) {
   try {
     return NextResponse.json(await wooFetch<WooProduct>("products", { method: "POST", body: JSON.stringify(payload) }), { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to create product." }, { status: 502 });
+    return wooErrorResponse(error, "Unable to create product.");
   }
 }

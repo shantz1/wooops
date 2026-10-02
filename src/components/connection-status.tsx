@@ -34,7 +34,6 @@ export function ConnectionStatus() {
       <div className="flex items-center gap-2 text-sm">
         {connected ? <CheckCircle2 className="size-4 text-emerald-600" /> : <XCircle className="size-4 text-destructive" />}
         {connected ? "Connected" : data?.error || "Environment variables are not configured."}
-        {connected && data?.woocommerce_version && <span className="text-muted-foreground">· WooCommerce {data.woocommerce_version}</span>}
       </div>
       <button onClick={load} aria-label="Check connection again" className="rounded-md border p-2 hover:bg-muted"><RefreshCw className="size-4" /></button>
     </div>

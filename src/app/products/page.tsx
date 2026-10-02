@@ -11,9 +11,9 @@ export default function ProductsPage() {
           <div>
             <p className="text-sm text-muted-foreground">Workspace</p>
             <h1 className="mt-1 text-2xl font-semibold">Products</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Browse the catalogue and manage stock without WordPress.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Browse your catalogue and keep stock up to date.</p>
           </div>
-          <Link href="/products/new" className="inline-flex h-10 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background hover:opacity-90">
+          <Link href="/products/new" className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90">
             <Plus className="size-4" /> Add product
           </Link>
         </div>
