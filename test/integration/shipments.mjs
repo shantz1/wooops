@@ -40,6 +40,10 @@ test("shipment and note routes against an isolated mock store", { timeout: 60_00
       response.setHeader("X-WP-Total", String(count));
       response.setHeader("X-WP-TotalPages", String(Math.ceil(count / 100)));
       response.end(JSON.stringify(data.slice((page - 1) * 100, page * 100)));
+    } else if (path === "/wp-json/wc/v3/reports/orders/totals") {
+      // The store's registered statuses, including an extension's custom status and an internal one.
+      response.end(JSON.stringify([{ slug: "processing", name: "Processing", total: 3 }, { slug: "completed", name: "Completed", total: 9 },
+        { slug: "awaiting-shipment", name: "Awaiting shipment", total: 1 }, { slug: "checkout-draft", name: "Draft", total: 0 }]));
     } else if (path === "/wp-json/wc/v3/products/1") {
       if (request.method === "PUT") Object.assign(product, body);
       response.end(JSON.stringify(product));
@@ -55,9 +59,10 @@ test("shipment and note routes against an isolated mock store", { timeout: 60_00
         response.writeHead(201).end(JSON.stringify(note));
       } else response.end(JSON.stringify(notes));
     } else if (path === "/wp-json/wc/v3/orders/1") {
-      if (request.method === "PUT" && saveMode === "normal") {
+      if (request.method === "PUT" && saveMode === "normal" && body.meta_data) {
         order.meta_data = body.meta_data.map(meta => ({ id: 11, ...meta }));
       }
+      if (request.method === "PUT" && body.status) order.status = body.status;
       response.end(JSON.stringify(order));
     } else response.writeHead(404).end(JSON.stringify({ error: "Not found" }));
   });
@@ -123,7 +128,28 @@ test("shipment and note routes against an isolated mock store", { timeout: 60_00
       ["/api/woo/orders/1/notes", "POST", { note: " " }], ["/api/woo/orders/1", "PATCH", { status: "invalid" }]]) {
       assert.equal((await api(path, method, body)).status, 400);
     }
-    assert.equal(requests.length, before);
+    // An unknown status slug is checked against the store's registered statuses (a read); nothing is written.
+    assert.deepEqual(requests.slice(before).map(request => `${request.method} ${request.path}`), ["GET /wp-json/wc/v3/reports/orders/totals"]);
+  });
+  await t.test("custom statuses registered in the store can be set; internal ones cannot", async () => {
+    requests = [];
+    const statuses = await api("/api/woo/order-statuses");
+    assert.equal(statuses.status, 200);
+    assert.deepEqual(statuses.body.statuses.map(item => [item.slug, item.settable]),
+      [["processing", true], ["completed", true], ["awaiting-shipment", true], ["checkout-draft", false]]);
+    const custom = await api("/api/woo/orders/1", "PATCH", { status: "awaiting-shipment" });
+    assert.equal(custom.status, 200);
+    assert.equal(custom.body.status, "awaiting-shipment");
+    const report = await api("/api/reports?kind=orders&from=2026-01-01&to=2026-12-31&status=awaiting-shipment");
+    assert.equal(report.status, 200);
+    assert.equal(report.body.filters.status, "awaiting-shipment");
+    assert.ok(requests.some(request => request.url.includes("status=awaiting-shipment")));
+    requests = [];
+    assert.equal((await api("/api/woo/orders/1", "PATCH", { status: "draft" })).status, 400);
+    assert.equal((await api("/api/woo/orders/1", "PATCH", { status: "checkout-draft" })).status, 400);
+    assert.equal((await api("/api/woo/orders/bulk", "POST", { ids: [1], status: "not-registered" })).status, 400);
+    assert.ok(requests.every(request => request.method === "GET"), "rejected statuses must not reach WooCommerce writes");
+    delete order.status;
   });
   await t.test("saves tracking before adding the customer-facing note", async () => {
     requests = [];

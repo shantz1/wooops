@@ -71,6 +71,7 @@ function PasswordSignOut() {
     try {
       const response = await fetch("/api/auth/logout", { method: "POST" });
       if (!response.ok) throw new Error();
+      try { sessionStorage.removeItem("panel:orders-navigation"); } catch { /* Storage can be unavailable. */ }
       router.push("/login");
     } catch {
       setFailed(true);

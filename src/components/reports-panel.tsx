@@ -5,13 +5,13 @@ import { storeDate } from "@/lib/timezone";
 import Link from "next/link";
 import { useState } from "react";
 import { BarChart3, Download, Package } from "lucide-react";
-import { OrderStatusBadge, statusLabel } from "@/components/order-status-badge";
+import { OrderStatusBadge } from "@/components/order-status-badge";
 import { EmptyState, ErrorState, LoadingState, Notice, RetryButton } from "@/components/ui/feedback";
 import { formatDateTime, plainText, wooDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { reportCsv, reportCurrencyTotals } from "@/lib/reports";
 import { useRemote } from "@/lib/use-remote";
-import { editableStatuses } from "@/lib/woocommerce/validation";
+import { statusName, useOrderStatusError, useOrderStatuses } from "@/lib/use-order-statuses";
 import type { ReportResponse } from "@/types/reports";
 
 function OrderReport({ data }: { data: ReportResponse }) {
@@ -45,6 +45,8 @@ export function ReportsPanel() {
 }
 
 function ReportWorkspace({ timeZone }: { timeZone: string }) {
+  const statuses = useOrderStatuses();
+  const statusError = useOrderStatusError();
   const [kind, setKind] = useState<"orders" | "inventory">("orders");
   const [from, setFrom] = useState(() => storeDate(new Date(Date.now() - 29 * 86400000), timeZone));
   const [to, setTo] = useState(() => storeDate(new Date(), timeZone));
@@ -70,14 +72,15 @@ function ReportWorkspace({ timeZone }: { timeZone: string }) {
     <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-medium text-primary">Insights</p><h1 className="mt-1 text-2xl font-semibold">Reports</h1><p className="mt-1 text-muted-foreground">Understand orders and stock, then export the records you need.</p></div><button type="button" disabled={!data || !data.loaded || loading} onClick={exportCsv} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"><Download className="size-4" />Export CSV</button></div>
     <form onSubmit={event => { event.preventDefault(); setQuery(new URLSearchParams({ kind, from, to, status, stock }).toString()); reload(); }} className="flex flex-wrap items-end gap-4 rounded-xl border bg-background p-4 shadow-sm">
       <label className="text-sm font-medium">Report<select value={kind} onChange={event => setKind(event.target.value as typeof kind)} className="mt-2 block h-10 rounded-lg border bg-background px-3"><option value="orders">Orders</option><option value="inventory">Inventory</option></select></label>
-      {kind === "orders" ? <><label className="text-sm font-medium">From (store date)<input required type="date" value={from} onChange={event => setFrom(event.target.value)} className="mt-2 block h-10 rounded-lg border bg-background px-3" /></label><label className="text-sm font-medium">To (store date)<input required type="date" min={from} value={to} onChange={event => setTo(event.target.value)} className="mt-2 block h-10 rounded-lg border bg-background px-3" /></label><label className="text-sm font-medium">Order status<select value={status} onChange={event => setStatus(event.target.value)} className="mt-2 block h-10 rounded-lg border bg-background px-3"><option value="all">All statuses</option>{editableStatuses.map(value => <option key={value} value={value}>{statusLabel(value)}</option>)}</select></label></>
+      {kind === "orders" ? <><label className="text-sm font-medium">From (store date)<input required type="date" value={from} onChange={event => setFrom(event.target.value)} className="mt-2 block h-10 rounded-lg border bg-background px-3" /></label><label className="text-sm font-medium">To (store date)<input required type="date" min={from} value={to} onChange={event => setTo(event.target.value)} className="mt-2 block h-10 rounded-lg border bg-background px-3" /></label><label className="text-sm font-medium">Order status<select value={status} onChange={event => setStatus(event.target.value)} className="mt-2 block h-10 rounded-lg border bg-background px-3"><option value="all">All statuses</option>{statuses.filter(item => item.settable).map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></label></>
         : <label className="text-sm font-medium">Stock status<select value={stock} onChange={event => setStock(event.target.value)} className="mt-2 block h-10 rounded-lg border bg-background px-3"><option value="all">All products</option><option value="instock">In stock</option><option value="outofstock">Out of stock</option><option value="onbackorder">On backorder</option></select></label>}
       <button disabled={loading} className="h-10 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">{loading ? "Generating..." : "Generate report"}</button>
     </form>
+    {statusError && <Notice tone="warning">{statusError}</Notice>}
     {error && <Notice tone="error" action={<RetryButton onRetry={reload} busy={loading} />}>{data ? "Showing the last successful report. " : ""}{error}</Notice>}
     {!data ? loading ? <LoadingState label="Generating report..." /> : <ErrorState message={error || "Report unavailable."} onRetry={reload} />
       : !data.configured ? <EmptyState title="Store connection is not configured">Check Settings.</EmptyState>
-      : <><div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span className="font-medium">{data.kind === "orders" ? "Order report" : "Inventory report"} · {data.loaded} of {data.total} matching records{data.kind === "orders" && <> · {data.filters.from} to {data.filters.to} {data.timezone} · {statusLabel(data.filters.status || "all")}</>}</span><span>Fetched {formatDateTime(new Date(data.generated_at), data.timezone)}</span></div>
+      : <><div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span className="font-medium">{data.kind === "orders" ? "Order report" : "Inventory report"} · {data.loaded} of {data.total} matching records{data.kind === "orders" && <> · {data.filters.from} to {data.filters.to} {data.timezone} · {data.filters.status === "all" ? "All statuses" : statusName(statuses, data.filters.status || "all")}</>}</span><span>Fetched {formatDateTime(new Date(data.generated_at), data.timezone)}</span></div>
         {data.timezone_warning && <Notice tone="warning">{data.timezone_warning}</Notice>}
         {!data.complete && <Notice tone="warning">This report is incomplete. It includes {data.loaded} of {data.total} matching records, with a limit of {data.limit}. Totals and CSV include only loaded records. Narrow the date range or filter and generate again. Store changes during loading can also make a report incomplete.</Notice>}
         {!data.loaded ? <EmptyState icon={kind === "orders" ? BarChart3 : Package} title="No matching records" /> : data.kind === "orders" ? <OrderReport data={data} /> : <InventoryReport data={data} />}

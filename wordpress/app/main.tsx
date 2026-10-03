@@ -11,6 +11,7 @@ const ReportsPage = lazy(() => import("@/app/reports/page"));
 const SettingsPage = lazy(() => import("@/app/settings/page"));
 import { AppShell } from "@/components/app-shell";
 const OrderDetail = lazy(() => import("@/components/order-detail").then(module => ({ default: module.OrderDetail })));
+const PackingSlip = lazy(() => import("@/components/packing-slip").then(module => ({ default: module.PackingSlip })));
 import { PanelPreferencesProvider } from "@/components/panel-preferences";
 import { EmptyState } from "@/components/ui/feedback";
 import { HashRouter, useHashPath } from "./router";
@@ -27,6 +28,8 @@ function Screen() {
   if (path === "/inventory") return <InventoryPage />;
   if (path === "/reports") return <ReportsPage />;
   if (path === "/settings") return <SettingsPage />;
+  const slip = /^\/orders\/([1-9]\d*)\/packing-slip$/.exec(path);
+  if (slip) return <PackingSlip key={slip[1]} id={slip[1]} />;
   const order = /^\/orders\/([1-9]\d*)$/.exec(path);
   if (order) return <AppShell><OrderDetail key={order[1]} id={order[1]} /></AppShell>;
   return (
@@ -52,7 +55,7 @@ const root = document.getElementById("storeops-root");
 if (root) {
   createRoot(root).render(
     <HashRouter>
-      <PanelPreferencesProvider><ScreenErrorBoundary><Suspense fallback={<AppShell><LoadingState label="Loading workspace?" /></AppShell>}><Screen /></Suspense></ScreenErrorBoundary></PanelPreferencesProvider>
+      <PanelPreferencesProvider><ScreenErrorBoundary><Suspense fallback={<AppShell><LoadingState label="Loading workspace…" /></AppShell>}><Screen /></Suspense></ScreenErrorBoundary></PanelPreferencesProvider>
     </HashRouter>,
   );
 }

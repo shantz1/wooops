@@ -4,14 +4,17 @@ import { usePanelPreferences } from "@/components/panel-preferences";
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, Check, Copy, Loader2, Mail, MapPin, Phone, Save, UserRound } from "lucide-react";
+import { ArrowLeft, Check, Copy, Loader2, Mail, MapPin, Phone, Printer, Save, UserRound } from "lucide-react";
 import { OrderItems } from "@/components/order-items";
 import { OrderNotes } from "@/components/order-notes";
-import { OrderStatusBadge, statusLabel } from "@/components/order-status-badge";
+import { OrderPager } from "@/components/order-pager";
+import { OrderStatusBadge } from "@/components/order-status-badge";
 import { ShipmentTracking } from "@/components/shipment-tracking";
 import { ErrorState, LoadingState, Notice, RetryButton } from "@/components/ui/feedback";
 import { errorMessage, fetchJson } from "@/lib/fetch-json";
 import { addressLines, formatDateTime, hasAddress, plainText, relativeAge, sameAddress, wooDate } from "@/lib/format";
+import { useOrdersNavigation } from "@/lib/orders-navigation";
+import { refreshOrderStatuses, statusName, useOrderStatusError, useOrderStatuses } from "@/lib/use-order-statuses";
 import { useRemote } from "@/lib/use-remote";
 import { editableStatuses } from "@/lib/woocommerce/validation";
 import type { WooAddress, WooOrder, WooOrderStatus } from "@/types/woocommerce";
@@ -54,7 +57,11 @@ function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooO
   const [status, setStatus] = useState<WooOrderStatus>(order.status);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ tone: "success" | "error"; message: string } | null>(null);
+  const statuses = useOrderStatuses();
+  const statusError = useOrderStatusError();
+  const options = statuses.filter(item => item.settable);
   const custom = !editableStatuses.includes(order.status as never);
+  const currentListed = options.some(item => item.slug === order.status);
 
   async function save() {
     if (!canWrite || saving || status === order.status) return;
@@ -64,7 +71,8 @@ function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooO
       const updated = await fetchJson<WooOrder>(`/api/woo/orders/${order.id}`, { method: "PATCH", json: { status } });
       onSaved(updated);
       setStatus(updated.status);
-      setResult({ tone: "success", message: `Status is now ${statusLabel(updated.status)}.` });
+      refreshOrderStatuses();
+      setResult({ tone: "success", message: `Status is now ${statusName(statuses, updated.status)}.` });
     } catch (cause) {
       setResult({ tone: "error", message: `${errorMessage(cause, "Update failed.")} Refresh the order to see its current status.` });
     } finally {
@@ -75,17 +83,19 @@ function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooO
   return (
     <section aria-labelledby="status-heading" className={card}>
       <h2 id="status-heading" className="font-semibold">Order status</h2>
+      {statusError && <Notice tone="warning" className="mt-3" action={<RetryButton onRetry={refreshOrderStatuses} />}>{statusError}</Notice>}
       <label htmlFor="order-status" className="sr-only">New status</label>
-      <select disabled={!canWrite} id="order-status" value={status} onChange={event => setStatus(event.target.value)} className="mt-4 h-10 w-full rounded-lg border bg-background px-3 text-sm capitalize">
-        {custom && <option value={order.status} disabled>{statusLabel(order.status)} (custom — current)</option>}
-        {editableStatuses.map(value => <option key={value} value={value}>{statusLabel(value)}</option>)}
+      <select disabled={!canWrite} id="order-status" value={status} onChange={event => setStatus(event.target.value)} className="mt-4 h-10 w-full rounded-lg border bg-background px-3 text-sm">
+        {!currentListed && <option value={order.status} disabled>{statusName(statuses, order.status)} (current)</option>}
+        {options.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}
       </select>
       <button type="button" disabled={!canWrite || saving || status === order.status} onClick={save}
         className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
         {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}Save status
       </button>
       <p className="mt-3 text-xs text-muted-foreground">Status changes are separate from shipments. Store may send its own status emails (for example, Completed order) depending on store settings.</p>
-      {custom && <p className="mt-2 text-xs text-muted-foreground">This order uses a custom status from your store or an extension. This panel can move it to a standard status but cannot set custom ones.</p>}
+      {custom && <p className="mt-2 text-xs text-muted-foreground">This order uses a custom status registered by your store or an extension.</p>}
+      <p className="mt-2 text-xs text-muted-foreground">The list includes custom statuses your store has registered. Extensions may run their own actions when an order enters one of their statuses.</p>
       {result && <Notice tone={result.tone} className="mt-3">{result.message}</Notice>}
     </section>
   );
@@ -96,7 +106,9 @@ export function OrderDetail({ id }: { id: string }) {
   const { data: order, setData: setOrder, error, loading, reload } = useRemote<WooOrder>(`/api/woo/orders/${id}`, "Unable to load order.");
   const [notesVersion, setNotesVersion] = useState(0);
   const refreshNotes = () => setNotesVersion(current => current + 1);
-  const back = <Link href="/orders" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Back to orders</Link>;
+  // Return to the filtered list page the user came from, when this tab has one.
+  const [navigation] = useOrdersNavigation();
+  const back = <Link href={navigation?.listHref ?? "/orders"} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />Back to orders</Link>;
 
   if (!order) {
     return <div className="space-y-4">{back}{loading ? <LoadingState label="Loading order…" className="min-h-[50vh]" />
@@ -121,7 +133,11 @@ export function OrderDetail({ id }: { id: string }) {
           Placed <time dateTime={created?.toISOString()}>{formatDateTime(created, timeZone)}</time>{created && <> ({relativeAge(created)})</>} · {order.payment_method_title || "Payment method not recorded"}
         </p>
       </div>
-      <RetryButton onRetry={reload} busy={loading} label="Refresh order" />
+      <div className="flex flex-wrap items-center gap-2">
+        <OrderPager id={id} />
+        <Link href={`/orders/${id}/packing-slip`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm hover:bg-muted"><Printer className="size-4" aria-hidden="true" />Packing slip</Link>
+        <RetryButton onRetry={reload} busy={loading} label="Refresh order" />
+      </div>
     </div>
     {error && <Notice tone="error">Showing the last loaded version of this order. {error}</Notice>}
 

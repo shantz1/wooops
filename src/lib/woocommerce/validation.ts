@@ -23,3 +23,11 @@ export function pageParam(value: string | null, fallback: number, max = Number.M
 export function searchParam(value: string | null) {
   return (value || "").trim().slice(0, 200);
 }
+
+/** Statuses WooCommerce registers for internal use; they are listed but never offered as a new status. */
+export const internalStatuses = ["trash", "checkout-draft", "draft", "auto-draft"];
+
+/** A plain WooCommerce status slug, including custom statuses registered by extensions (without the wc- prefix). */
+export function isStatusSlug(value: unknown): value is string {
+  return typeof value === "string" && /^[a-z0-9_-]{1,40}$/.test(value);
+}

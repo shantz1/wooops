@@ -122,7 +122,7 @@ trait KartoDesk_Catalog {
 			if ( ! is_string( $from ) || ! is_string( $to ) || '' === $from || '' === $to ||
 				! self::valid_date( $from ) || ! self::valid_date( $to ) || $from > $to ||
 				strtotime( $to ) - strtotime( $from ) > 366 * DAY_IN_SECONDS ||
-				( 'all' !== $status && ! in_array( $status, self::EDITABLE_STATUSES, true ) ) ) {
+				( 'all' !== $status && ! self::is_settable_status( $status ) ) ) {
 				return self::error( esc_html__( 'Choose a valid date range of up to one year and a supported status.', 'kartodesk-for-woocommerce' ), 400 );
 			}
 			$start = new DateTimeImmutable( $from . ' 00:00:00', wp_timezone() );

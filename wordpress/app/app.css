@@ -87,3 +87,11 @@ body.storeops-app #wpbody-content > :not(#storeops-root) { display: none; }
 
 #storeops-root dialog { color: inherit; }
 #storeops-root dialog::backdrop { background: rgb(0 0 0 / 0.4); }
+
+/* Printing (packing slips): the panel is a fixed, scrolling overlay on screen; print it as normal flowing content. */
+@media print {
+  html.wp-toolbar { padding-top: 0 !important; }
+  body.storeops-app { overflow: visible !important; background: #fff !important; }
+  body.storeops-app :is(#wpcontent, #wpbody, #wpbody-content) { margin: 0 !important; padding: 0 !important; float: none !important; }
+  #storeops-root { position: static !important; inset: auto !important; overflow: visible !important; background: #fff !important; }
+}

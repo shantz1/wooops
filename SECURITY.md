@@ -36,3 +36,5 @@ The shadcn CLI is not a production dependency; its MIT-licensed CSS is vendored 
 Run npm audit regularly. An audit result is a dependency check, not proof that the application is secure.
 
 At the 0.1.1 plugin release, the production dependency audit has no reported vulnerabilities. The full audit still reports five high-severity development dependency findings through ESLint's braces dependency (GHSA-vfj7-8cjw-p6xm); no patched braces release is currently available. These tools are not shipped in the plugin ZIP or needed to serve the standalone production build. Recheck the advisory before upgrading build tooling.
+
+Order list search terms and order IDs are kept in tab session storage for previous/next navigation. Search terms may contain customer information; avoid sharing filtered URLs containing personal data. Standalone logout clears this navigation record.

@@ -4,7 +4,7 @@ import { storeDateBounds } from "@/lib/timezone";
 import { NextRequest, NextResponse } from "next/server";
 import { isWooCommerceConfigured, wooFetchWithHeaders } from "@/lib/woocommerce/client";
 import { wooErrorResponse } from "@/lib/woocommerce/errors";
-import { isOrderStatus } from "@/lib/woocommerce/validation";
+import { isSettableStatus } from "@/lib/woocommerce/order-statuses";
 import type { ReportOrder, ReportProduct, ReportResponse } from "@/types/reports";
 
 const limit = 500;
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const from = params.get("from") || "";
     const to = params.get("to") || "";
     const status = params.get("status") || "all";
-    if (!validDate(from) || !validDate(to) || from > to || Date.parse(to) - Date.parse(from) > 366 * 86400000 || status !== "all" && !isOrderStatus(status)) {
+    if (!validDate(from) || !validDate(to) || from > to || Date.parse(to) - Date.parse(from) > 366 * 86400000 || status !== "all" && !await isSettableStatus(status)) {
       return NextResponse.json({ error: "Choose a valid date range of up to one year and a supported status." }, { status: 400 });
     }
     timezone = await readStoreTimezone();
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     timezone = await readStoreTimezone();
     if (stock !== "all") query.set("stock_status", stock);
   }
-  const base = { ...timezone, configured: isWooCommerceConfigured(), kind, total: 0, loaded: 0, complete: true, limit,
+  const base = { timezone: timezone.timezone, timezone_warning: timezone.timezone_warning, configured: isWooCommerceConfigured(), kind, total: 0, loaded: 0, complete: true, limit,
     generated_at: new Date().toISOString(), filters: kind === "orders" ? { from: params.get("from")!, to: params.get("to")!, status: params.get("status") || "all" } : { stock: params.get("stock") || "all" }, orders: [], products: [] };
   if (!base.configured) return NextResponse.json(base);
   try {

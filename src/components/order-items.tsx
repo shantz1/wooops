@@ -6,7 +6,7 @@ import { orderTotals } from "@/lib/order-totals";
 import type { WooLineItem, WooOrder } from "@/types/woocommerce";
 
 /** Customer-visible item meta such as variation attributes. Keys starting with "_" are internal to WooCommerce. */
-function itemMeta(item: WooLineItem) {
+export function itemMeta(item: WooLineItem) {
   return (item.meta_data || []).flatMap(meta => {
     if (meta.key.startsWith("_")) return [];
     const label = plainText(String(meta.display_key || meta.key));

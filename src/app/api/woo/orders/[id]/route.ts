@@ -3,7 +3,8 @@ import { readRequestJson } from "@/lib/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { wooFetch } from "@/lib/woocommerce/client";
 import { wooErrorResponse } from "@/lib/woocommerce/errors";
-import { isId, isOrderStatus } from "@/lib/woocommerce/validation";
+import { clearOrderStatuses, isSettableStatus } from "@/lib/woocommerce/order-statuses";
+import { isId } from "@/lib/woocommerce/validation";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -21,10 +22,14 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if (denied) return denied;
   const { id } = await params;
   const body = await readRequestJson(request).catch(() => null);
-  if (!isId(id) || !isOrderStatus(body?.status)) {
+  if (!isId(id) || !(await isSettableStatus(body?.status))) {
     return NextResponse.json({ error: "Invalid order ID or status." }, { status: 400 });
   }
-  try { return NextResponse.json(await wooFetch(`orders/${id}`, { method: "PUT", body: JSON.stringify({ status: body.status }) })); }
+  try {
+    const order = await wooFetch(`orders/${id}`, { method: "PUT", body: JSON.stringify({ status: body.status }) });
+    clearOrderStatuses();
+    return NextResponse.json(order);
+  }
   catch (error) { return wooErrorResponse(error, "Unable to update order."); }
 }
 

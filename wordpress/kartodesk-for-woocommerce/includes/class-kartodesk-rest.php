@@ -48,6 +48,9 @@ class KartoDesk_Rest {
 
 	const EDITABLE_STATUSES = array( 'pending', 'processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed' );
 
+	/** Statuses WooCommerce registers for internal use; listed but never offered as a new status. */
+	const INTERNAL_STATUSES = array( 'trash', 'checkout-draft', 'draft', 'auto-draft' );
+
 	/**
 	 * Registers hooks.
 	 */
@@ -89,6 +92,7 @@ class KartoDesk_Rest {
 			'/woo/products/(?P<id>[1-9]\d*)' => array( 'GET' => 'get_product', 'PATCH' => 'update_stock' ),
 			'/woo/customers'      => array( 'GET' => 'list_customers' ),
 			'/woo/orders'         => array( 'GET' => 'list_orders' ),
+			'/woo/order-statuses' => array( 'GET' => 'order_statuses' ),
 			'/woo/orders/bulk'    => array( 'POST' => 'bulk_status' ),
 			$order                => array( 'GET' => 'get_order', 'PATCH' => 'update_status' ),
 			$order . '/notes'     => array( 'GET' => 'list_notes', 'POST' => 'add_note' ),
@@ -223,9 +227,66 @@ class KartoDesk_Rest {
 					'decimal_places'     => (string) wc_get_price_decimals(),
 					'country'            => (string) get_option( 'woocommerce_default_country' ),
 					'prices_include_tax' => (string) get_option( 'woocommerce_prices_include_tax' ),
+					// Used on packing slips.
+					'name'               => wp_strip_all_tags( get_bloginfo( 'name' ) ),
+					'address'            => array(
+						'address_1' => WC()->countries->get_base_address(),
+						'address_2' => WC()->countries->get_base_address_2(),
+						'city'      => WC()->countries->get_base_city(),
+						'postcode'  => WC()->countries->get_base_postcode(),
+						'state'     => WC()->countries->get_base_state(),
+						'country'   => WC()->countries->get_base_country(),
+					),
 				),
 			)
 		);
+	}
+
+	/**
+	 * Every registered order status without the wc- prefix, including custom statuses from extensions.
+	 *
+	 * @return array<string, string> Slug => label.
+	 */
+	private static function registered_statuses() {
+		$statuses = array();
+		foreach ( wc_get_order_statuses() as $key => $label ) {
+			$slug = 0 === strpos( $key, 'wc-' ) ? substr( $key, 3 ) : $key;
+			if ( preg_match( '/^[a-z0-9_-]{1,40}$/', $slug ) ) {
+				$statuses[ $slug ] = wp_strip_all_tags( (string) $label );
+			}
+		}
+		return $statuses;
+	}
+
+	/**
+	 * Standard statuses are always accepted; custom ones must currently be registered in the store.
+	 *
+	 * @param mixed $status Requested status.
+	 * @return bool
+	 */
+	private static function is_settable_status( $status ) {
+		if ( in_array( $status, self::EDITABLE_STATUSES, true ) ) {
+			return true;
+		}
+		return is_string( $status ) && ! in_array( $status, self::INTERNAL_STATUSES, true ) && array_key_exists( $status, self::registered_statuses() );
+	}
+
+	/**
+	 * GET /woo/order-statuses — the store's statuses with order counts, same shape as the standalone app.
+	 *
+	 * @return WP_REST_Response
+	 */
+	public static function order_statuses() {
+		$statuses = array();
+		foreach ( self::registered_statuses() as $slug => $name ) {
+			$statuses[] = array(
+				'slug'     => $slug,
+				'name'     => mb_substr( '' !== trim( $name ) ? trim( $name ) : $slug, 0, 80 ),
+				'count'    => (int) wc_orders_count( $slug ),
+				'settable' => ! in_array( $slug, self::INTERNAL_STATUSES, true ),
+			);
+		}
+		return new WP_REST_Response( array( 'statuses' => $statuses ) );
 	}
 
 	/**
@@ -287,7 +348,7 @@ class KartoDesk_Rest {
 	 */
 	public static function update_status( WP_REST_Request $request ) {
 		$status = $request->get_param( 'status' );
-		if ( ! in_array( $status, self::EDITABLE_STATUSES, true ) ) {
+		if ( ! self::is_settable_status( $status ) ) {
 			return self::error( __( 'Invalid order ID or status.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 		list( $order ) = self::wc( 'PUT', 'orders/' . (int) $request['id'], array(), array( 'status' => $status ) );
@@ -303,7 +364,7 @@ class KartoDesk_Rest {
 	public static function bulk_status( WP_REST_Request $request ) {
 		$ids    = $request->get_param( 'ids' );
 		$status = $request->get_param( 'status' );
-		$valid  = is_array( $ids ) && count( $ids ) >= 1 && count( $ids ) <= 100 && in_array( $status, self::EDITABLE_STATUSES, true );
+		$valid  = is_array( $ids ) && count( $ids ) >= 1 && count( $ids ) <= 100 && self::is_settable_status( $status );
 		if ( $valid ) {
 			foreach ( $ids as $id ) {
 				if ( ! ( is_int( $id ) && $id > 0 ) && ! ( is_string( $id ) && preg_match( '/^[1-9]\d*$/', $id ) ) ) {

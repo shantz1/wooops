@@ -1,3 +1,6 @@
+"use client";
+
+import { statusName, useOrderStatuses } from "@/lib/use-order-statuses";
 import type { KnownOrderStatus, WooOrderStatus } from "@/types/woocommerce";
 
 const styles: Record<KnownOrderStatus, string> = {
@@ -17,13 +20,17 @@ export function statusLabel(status: WooOrderStatus) {
   return status.replace(/^wc-/, "").replace(/[-_]+/g, " ");
 }
 
-/** Custom statuses registered by extensions are shown with a neutral outlined style, never as a known status. */
+/**
+ * Custom statuses registered by extensions are shown with a neutral outlined style, never as a known status.
+ * The label is the store's own name for the status when available.
+ */
 export function OrderStatusBadge({ status }: { status: WooOrderStatus }) {
-  const known = status in styles;
+  const statuses = useOrderStatuses();
+  const known = Object.hasOwn(styles, status);
   return (
     <span title={known ? undefined : "Custom status from your store or an extension"}
-      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium capitalize ${known ? styles[status as KnownOrderStatus] : custom}`}>
-      {statusLabel(status)}
+      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${known ? styles[status as KnownOrderStatus] : custom}`}>
+      {statusName(statuses, status)}
     </span>
   );
 }

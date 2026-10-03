@@ -19,7 +19,7 @@ test("WordPress plugin catalog, reports and access", { skip: !base }, async () =
     calls.push(`${method} ${path}: ${response.status}`);
     return { status: response.status, data };
   }
-  for (const path of ["timezone", "settings", "woo/connection", "woo/products?per_page=2", "woo/customers?per_page=2", "woo/orders?per_page=2", "reports?kind=inventory"]) {
+  for (const path of ["timezone", "settings", "woo/connection", "woo/products?per_page=2", "woo/customers?per_page=2", "woo/orders?per_page=2", "woo/order-statuses", "reports?kind=inventory"]) {
     const result = await api(path);
     assert.equal(result.status, 200, path);
     assert.equal((await api(path, "GET", undefined, "sub")).status, 403, `Subscriber: ${path}`);

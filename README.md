@@ -81,7 +81,7 @@ Use an HTTPS reverse proxy, restrict direct access to the Node port and add per-
 
 ## WordPress plugin: KartoDesk
 
-1. Upload the packaged `kartodesk-for-woocommerce-0.1.1.zip` under **Plugins > Add New > Upload Plugin**.
+1. Upload the packaged `kartodesk-for-woocommerce-0.1.2.zip` under **Plugins > Add New > Upload Plugin**.
 2. Activate it and open **KartoDesk** in the admin menu, or visit **/manage/**.
 3. Use an administrator or store manager account. No Node server, API keys or WooOps password are needed.
 
@@ -100,7 +100,9 @@ The ZIP is created under `wordpress/dist/`. It includes every local screen modul
 
 ## Tracking and emails
 
-Open an order to save courier tracking and an optional HTTPS link. No tracking plugin is needed. Customer notification is off by default.
+Order filters stay in the URL. Use Previous/Next to move through the filtered list, or print a packing slip from an order. Custom store statuses are available in order screens and reports.
+
+Open an order to save courier tracking and an optional HTTPS link. Known couriers suggest an editable tracking link. Templates have not been verified with real parcels for every courier. Check each link opens the right parcel before saving; no live delivery status is fetched. No tracking plugin is needed. Customer notification is off by default.
 
 Enable **Customer note** under **WooCommerce > Settings > Emails** and test the store's mail delivery. The panel confirms that the store accepted a note, not that an email was delivered. Status changes may trigger separate store emails.
 

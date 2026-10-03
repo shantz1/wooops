@@ -3,7 +3,7 @@
  * Plugin Name:       KartoDesk for WooCommerce
  * Plugin URI:        https://github.com/shantz1/wooops
  * Description:       A store operations workspace inside wp-admin: orders, products, stock, customers, reports and shipment tracking.
- * Version:           0.1.1
+ * Version:           0.1.2
  * Requires at least: 6.5
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -19,7 +19,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KARTODESK_VERSION', '0.1.1' );
+define( 'KARTODESK_VERSION', '0.1.2' );
 define( 'KARTODESK_FILE', __FILE__ );
 define( 'KARTODESK_DIR', plugin_dir_path( __FILE__ ) );
 

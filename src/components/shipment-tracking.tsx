@@ -1,11 +1,12 @@
 "use client";
 
 import { usePanelPreferences } from "@/components/panel-preferences";
-import { useRef, useState, type FormEvent } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 import { ExternalLink, Loader2, Mail, Trash2, Truck } from "lucide-react";
 import { ErrorState, LoadingState, Notice, RetryButton } from "@/components/ui/feedback";
 import { errorMessage, fetchJson, RequestError } from "@/lib/fetch-json";
 import { plainText } from "@/lib/format";
+import { couriers, findCourier, trackingLink } from "@/lib/couriers";
 import { useRemote } from "@/lib/use-remote";
 import type { Shipment } from "@/lib/woocommerce/shipments";
 
@@ -31,6 +32,18 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
   const [carrier, setCarrier] = useState("");
   const [number, setNumber] = useState("");
   const [link, setLink] = useState("");
+  // Once someone types in the link field, it is theirs: courier templates no longer overwrite it.
+  const [linkEdited, setLinkEdited] = useState(false);
+  const courierListId = useId();
+  const knownCourier = findCourier(carrier);
+  const suggestedLink = trackingLink(carrier, number);
+  const linkFromTemplate = !linkEdited && Boolean(suggestedLink) && link === suggestedLink;
+
+  function updateCarrierOrNumber(nextCarrier: string, nextNumber: string) {
+    setCarrier(nextCarrier);
+    setNumber(nextNumber);
+    if (!linkEdited) setLink(trackingLink(nextCarrier, nextNumber));
+  }
   const [date, setDate] = useState("");
   const [notify, setNotify] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -67,7 +80,7 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
         json: { carrier, tracking_number: number, tracking_url: link, shipped_at: date, notify_customer: notify && Boolean(customerEmail) },
       });
       setData({ shipments: result.shipments || [] });
-      setCarrier(""); setNumber(""); setLink(""); setDate(""); setNotify(false);
+      setCarrier(""); setNumber(""); setLink(""); setLinkEdited(false); setDate(""); setNotify(false);
       if (result.email_error) {
         const shipment = result.shipments?.find(item => item.id === result.email_shipment_id);
         if (result.email_outcome_unknown) {
@@ -137,13 +150,16 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
         <h3 className="font-medium">Add shipment</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">Courier
-            <input required maxLength={80} value={carrier} onChange={event => setCarrier(event.target.value)} placeholder="e.g. DHL" className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />
+            <input required maxLength={80} list={courierListId} value={carrier} onChange={event => updateCarrierOrNumber(event.target.value, number)} placeholder="Choose or type a courier" autoComplete="off" className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />
+            <datalist id={courierListId}>{couriers.map(courier => <option key={courier.name} value={courier.name} />)}</datalist>
           </label>
           <label className="text-sm font-medium">Tracking number
-            <input required maxLength={120} value={number} onChange={event => setNumber(event.target.value)} className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />
+            <input required maxLength={120} value={number} onChange={event => updateCarrierOrNumber(carrier, event.target.value)} className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />
           </label>
           <label className="text-sm font-medium">Tracking link <span className="text-muted-foreground">(optional, HTTPS)</span>
-            <input type="url" pattern="https://.*" value={link} onChange={event => setLink(event.target.value)} placeholder="https://..." className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />
+            <input type="url" pattern="https://.*" value={link} onChange={event => { setLink(event.target.value); setLinkEdited(true); }} placeholder={knownCourier ? "Filled in from the tracking number" : "https://..."} className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />
+            {linkFromTemplate && <span className="mt-1 block text-xs font-normal text-muted-foreground">Filled in from {knownCourier?.name}&apos;s tracking page. Check it opens the right parcel before saving.</span>}
+            {linkEdited && suggestedLink && link !== suggestedLink && <button type="button" onClick={() => { setLink(suggestedLink); setLinkEdited(false); }} className="mt-1 block text-xs font-normal underline underline-offset-2">Use {knownCourier?.name}&apos;s tracking link</button>}
           </label>
           <label className="text-sm font-medium">Date shipped <span className="text-muted-foreground">(optional)</span>
             <input type="date" value={date} onChange={event => setDate(event.target.value)} className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />
