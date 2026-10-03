@@ -6,7 +6,7 @@ import { apiHeaders, apiUrl, wordpressRuntime } from "@/lib/runtime";
 
 export type PanelPreferences = { name: string; theme: "system" | "light" | "dark" };
 // The WordPress plugin ships under its own name; the standalone app keeps WooOps.
-const defaults: PanelPreferences = { name: wordpressRuntime() ? "StoreOps" : "WooOps", theme: "system" };
+const defaults: PanelPreferences = { name: wordpressRuntime() ? "KartoDesk" : "WooOps", theme: "system" };
 const Context = createContext<{ timeZone: string; preferences: PanelPreferences; save: (value: PanelPreferences) => void }>({ timeZone: "UTC", preferences: defaults, save: () => {} });
 
 export function PanelPreferencesProvider({ children }: { children: React.ReactNode }) {

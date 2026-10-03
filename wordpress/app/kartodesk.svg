@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>KartoDesk</title>
+  <defs><linearGradient id="bg" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse"><stop stop-color="#10B981"/><stop offset=".48" stop-color="#0891B2"/><stop offset="1" stop-color="#2563EB"/></linearGradient></defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" stroke="white" stroke-opacity=".18"/>
+  <path d="M12 22v20m14-20L12 32l14 10M36 22v20h7c7 0 11-4 11-10s-4-10-11-10h-7Z" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

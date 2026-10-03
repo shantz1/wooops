@@ -19,5 +19,7 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - run: npm run build:wp
+      - run: python wordpress/package.py
       - run: npx tsc --noEmit
       - run: npm run test:integration

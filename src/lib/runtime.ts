@@ -1,10 +1,10 @@
 /**
  * Where the panel runs. The standalone Next.js app has no config; the WordPress plugin prints
- * `window.storeOpsConfig` before loading its bundle, pointing API calls at its REST namespace.
+ * `window.kartoDeskConfig` before loading its bundle, pointing API calls at its REST namespace.
  */
 export interface WordPressRuntime {
   platform: "wordpress";
-  /** REST namespace root, e.g. https://store.test/wp-json/storeops/v1/ (or ?rest_route= with plain permalinks). */
+  /** REST namespace root, e.g. https://store.test/wp-json/kartodesk/v1/ (or ?rest_route= with plain permalinks). */
   restRoot: string;
   nonce: string;
   assetsUrl: string;
@@ -15,7 +15,7 @@ export interface WordPressRuntime {
 
 export function wordpressRuntime(): WordPressRuntime | null {
   if (typeof window === "undefined") return null;
-  const config = (window as unknown as { storeOpsConfig?: WordPressRuntime }).storeOpsConfig;
+  const config = (window as unknown as { kartoDeskConfig?: WordPressRuntime }).kartoDeskConfig;
   return config?.platform === "wordpress" ? config : null;
 }
 

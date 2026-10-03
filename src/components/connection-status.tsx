@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { fetchJson } from "@/lib/fetch-json";
 
 type Connection = { configured: boolean; woocommerce_version?: string | null; error?: string };
 
@@ -12,11 +13,9 @@ export function ConnectionStatus() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/woo/connection");
-      const result = (await response.json()) as Connection;
-      setData(response.ok ? result : { ...result, error: result.error || "Connection check failed." });
-    } catch {
-      setData({ configured: true, error: "Unable to reach the connection check." });
+      setData(await fetchJson<Connection>("/api/woo/connection"));
+    } catch (cause) {
+      setData({ configured: true, error: cause instanceof Error ? cause.message : "Unable to reach the connection check." });
     } finally {
       setLoading(false);
     }

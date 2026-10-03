@@ -1,5 +1,5 @@
 /*
- * StoreOps styles inside wp-admin.
+ * KartoDesk styles inside wp-admin.
  * - Tailwind's global preflight is not loaded, so wp-admin itself is never restyled.
  * - wp-admin CSS is unlayered and would beat layered utilities, so utilities are marked important.
  * - The reset below is scoped to #storeops-root with ID specificity so it outranks wp-admin's element styles.
@@ -16,6 +16,9 @@
 
 /* The panel takes over the viewport like a full-screen app; "Back to WordPress" returns to wp-admin. */
 body.storeops-app { overflow: hidden; }
+/* Remove covered admin controls from keyboard and screen-reader navigation too. */
+body.storeops-app :is(#adminmenumain, #wpadminbar, #wpfooter, #screen-meta, #screen-meta-links) { display: none; }
+body.storeops-app #wpbody-content > :not(#storeops-root) { display: none; }
 
 #storeops-root {
   --font-geist-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;

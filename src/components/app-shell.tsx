@@ -50,7 +50,7 @@ function Brand() {
   const { preferences } = usePanelPreferences();
   return (
     <div className="flex items-center gap-2.5 font-semibold tracking-tight">
-      <Image src={`${wordpressRuntime()?.assetsUrl ?? "/"}wo.svg`} width={36} height={36} alt="" className="size-9 shrink-0 rounded-lg shadow-sm" />
+      <Image src={wordpressRuntime() ? `${wordpressRuntime()!.assetsUrl}kartodesk.svg` : "/wo.svg"} width={36} height={36} alt="" className="size-9 shrink-0 rounded-lg shadow-sm" />
       <span className="max-w-40 truncate">{preferences.name}</span>
     </div>
   );

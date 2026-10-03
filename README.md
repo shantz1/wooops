@@ -113,20 +113,23 @@ npm run test:integration
 
 Integration tests use an isolated mock store, not your live store. Optional signed webhooks can be configured at `/api/woo/webhooks` using `WOOCOMMERCE_WEBHOOK_SECRET`; they currently log events only.
 
-## WordPress plugin: StoreOps for WooCommerce
+## WordPress plugin: KartoDesk for WooCommerce
 
-The same panel also ships as a WordPress plugin in `wordpress/storeops-for-woocommerce/`. It runs inside wp-admin under **StoreOps**, full screen, with a **WordPress dashboard** button to return. No Node.js server, API keys, or WooOps password are needed: the plugin's PHP REST routes (`/wp-json/storeops/v1/`) call WooCommerce's REST API in-process as the signed-in user, and only users with `manage_woocommerce` can use it.
+The same panel also ships as a WordPress plugin in `wordpress/kartodesk-for-woocommerce/`. It runs inside wp-admin under **KartoDesk**, full screen, with a **WordPress dashboard** button to return. No Node.js server, API keys, or WooOps password are needed: the plugin's PHP REST routes (`/wp-json/kartodesk/v1/`) call WooCommerce's REST API in-process as the signed-in user, and only users with `manage_woocommerce` can use it.
 
-The first plugin version covers the overview, orders list, order workspace, notes and shipment tracking. Products, customers, inventory, reports and settings remain in the standalone app for now. Tracking uses the same `wooops_shipments` order metadata, so the plugin and the standalone app can be used on one store.
+The plugin includes Overview, Orders, Products, Customers, Inventory, Reports and Settings, including simple product creation, notes and shipment tracking. It has the same feature limits as the standalone panel. Tracking uses the same `wooops_shipments` order metadata, so the plugin and the standalone app can be used on one store.
 
 Build and package it:
 
 ```bash
-npm run build:wp   # writes wordpress/storeops-for-woocommerce/build/ (not committed)
+npm run build:wp   # builds the plugin assets
+python wordpress/package.py   # creates the installable ZIP (requires Python 3)
 ```
 
-Then zip the `wordpress/storeops-for-woocommerce` folder so the zip contains that folder at its root. Use a tool that writes forward-slash paths; Windows PowerShell 5.1's `Compress-Archive` does not, and such zips fail on Linux servers. The front-end source lives in `src/` (shared components) and `wordpress/app/` (hash router and small stand-ins for `next/link`, `next/navigation` and `next/image`).
+Then zip the `wordpress/kartodesk-for-woocommerce` folder so the zip contains that folder at its root. Use a tool that writes forward-slash paths; Windows PowerShell 5.1's `Compress-Archive` does not, and such zips fail on Linux servers. The front-end source lives in `src/` (shared components) and `wordpress/app/` (hash router and small stand-ins for `next/link`, `next/navigation` and `next/image`).
 
 ## License
 
 [MIT](LICENSE)
+
+The clean panel URL is `/manage/` (under the WordPress installation path). Use readable permalinks. After updating, save Settings > Permalinks once if the URL returns 404. An existing page named `manage` takes priority; use the wp-admin menu instead. When replacing the earlier StoreOps test plugin, deactivate it before activating KartoDesk.

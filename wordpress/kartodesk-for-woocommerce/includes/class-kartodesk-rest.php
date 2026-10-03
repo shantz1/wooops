@@ -1,21 +1,21 @@
 <?php
 /**
- * StoreOps REST API.
+ * KartoDesk REST API.
  *
  * Mirrors the standalone WooOps `/api/*` routes so the same panel code runs in both. Store data is read and
  * written through WooCommerce's own REST controllers in-process, as the signed-in WordPress user, so
  * WooCommerce's permission checks and response shapes apply and no API keys are needed.
  *
- * @package StoreOps
+ * @package KartoDesk
  */
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * An error with the HTTP status the StoreOps route should return. Messages are HTML-escaped when created;
+ * An error with the HTTP status the KartoDesk route should return. Messages are HTML-escaped when created;
  * the panel decodes entities and renders them as plain text.
  */
-class StoreOps_Error extends Exception {
+class KartoDesk_Error extends Exception {
 
 	/**
 	 * HTTP status.
@@ -37,11 +37,12 @@ class StoreOps_Error extends Exception {
 }
 
 /**
- * Registers and implements the storeops/v1 routes.
+ * Registers and implements the kartodesk/v1 routes.
  */
-class StoreOps_Rest {
+class KartoDesk_Rest {
+	use KartoDesk_Catalog;
 
-	const REST_NAMESPACE = 'storeops/v1';
+	const REST_NAMESPACE = 'kartodesk/v1';
 
 	const SHIPMENTS_META_KEY = 'wooops_shipments';
 
@@ -71,6 +72,11 @@ class StoreOps_Rest {
 		$order = '/woo/orders/(?P<id>[1-9]\d*)';
 		$routes = array(
 			'/settings'           => array( 'GET' => 'settings' ),
+			'/reports'            => array( 'GET' => 'reports' ),
+			'/woo/connection'     => array( 'GET' => 'connection' ),
+			'/woo/products'       => array( 'GET' => 'list_products', 'POST' => 'create_product' ),
+			'/woo/products/(?P<id>[1-9]\d*)' => array( 'GET' => 'get_product', 'PATCH' => 'update_stock' ),
+			'/woo/customers'      => array( 'GET' => 'list_customers' ),
 			'/woo/orders'         => array( 'GET' => 'list_orders' ),
 			'/woo/orders/bulk'    => array( 'POST' => 'bulk_status' ),
 			$order                => array( 'GET' => 'get_order', 'PATCH' => 'update_status' ),
@@ -91,7 +97,7 @@ class StoreOps_Rest {
 	}
 
 	/**
-	 * Wraps a route so thrown StoreOps_Error values become `{ error }` JSON responses like the standalone app.
+	 * Wraps a route so thrown KartoDesk_Error values become `{ error }` JSON responses like the standalone app.
 	 *
 	 * @param string $callback Method name.
 	 * @return callable
@@ -100,7 +106,7 @@ class StoreOps_Rest {
 		return static function ( WP_REST_Request $request ) use ( $callback ) {
 			try {
 				return call_user_func( array( __CLASS__, $callback ), $request );
-			} catch ( StoreOps_Error $error ) {
+			} catch ( KartoDesk_Error $error ) {
 				return self::error( $error->getMessage(), $error->status );
 			}
 		};
@@ -126,7 +132,7 @@ class StoreOps_Rest {
 	 * @param array      $query  Query parameters.
 	 * @param array|null $body   Body parameters.
 	 * @return array{0: mixed, 1: array} Response data and headers.
-	 * @throws StoreOps_Error When WooCommerce returns an error.
+	 * @throws KartoDesk_Error When WooCommerce returns an error.
 	 */
 	private static function wc( $method, $route, $query = array(), $body = null ) {
 		$request = new WP_REST_Request( $method, '/wc/v3/' . $route );
@@ -138,22 +144,22 @@ class StoreOps_Rest {
 		}
 		$response = rest_do_request( $request );
 		// In-process responses can contain objects (for example WC_Meta_Data) that only become plain JSON when
-		// sent over HTTP. Round-trip through JSON so StoreOps reads exactly what an API client would.
+		// sent over HTTP. Round-trip through JSON so KartoDesk reads exactly what an API client would.
 		$data   = json_decode( wp_json_encode( rest_get_server()->response_to_data( $response, false ) ), true );
 		$status = $response->get_status();
 		if ( $response->is_error() || $status >= 400 ) {
 			$message = is_array( $data ) && ! empty( $data['message'] ) ? wp_strip_all_tags( (string) $data['message'] ) : '';
 			if ( 404 === $status ) {
-				throw new StoreOps_Error( esc_html__( 'The store could not find that record (404).', 'storeops-for-woocommerce' ), 404 );
+				throw new KartoDesk_Error( esc_html__( 'The store could not find that record (404).', 'kartodesk-for-woocommerce' ), 404 );
 			}
 			if ( 401 === $status || 403 === $status ) {
-				throw new StoreOps_Error( esc_html__( 'Your WordPress user is not allowed to do this in WooCommerce.', 'storeops-for-woocommerce' ), 403 );
+				throw new KartoDesk_Error( esc_html__( 'Your WordPress user is not allowed to do this in WooCommerce.', 'kartodesk-for-woocommerce' ), 403 );
 			}
 			if ( 400 === $status ) {
-				throw new StoreOps_Error( $message ? esc_html( $message ) : esc_html__( 'WooCommerce rejected the request.', 'storeops-for-woocommerce' ), 400 );
+				throw new KartoDesk_Error( $message ? esc_html( $message ) : esc_html__( 'WooCommerce rejected the request.', 'kartodesk-for-woocommerce' ), 400 );
 			}
 			/* translators: %d: HTTP status code. */
-			throw new StoreOps_Error( $message ? esc_html( $message ) : esc_html( sprintf( __( 'WooCommerce returned an error (%d).', 'storeops-for-woocommerce' ), $status ) ), 502 );
+			throw new KartoDesk_Error( $message ? esc_html( $message ) : esc_html( sprintf( __( 'WooCommerce returned an error (%d).', 'kartodesk-for-woocommerce' ), $status ) ), 502 );
 		}
 		return array( $data, $response->get_headers() );
 	}
@@ -213,7 +219,7 @@ class StoreOps_Rest {
 		}
 		// Custom statuses from extensions are allowed, but only as plain slugs.
 		if ( ! preg_match( '/^[a-z0-9_-]{1,40}$/', $status ) ) {
-			return self::error( __( 'Invalid status filter.', 'storeops-for-woocommerce' ), 400 );
+			return self::error( __( 'Invalid status filter.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 		$query = array(
 			'page'     => self::page_param( $request->get_param( 'page' ), 1 ),
@@ -259,7 +265,7 @@ class StoreOps_Rest {
 	public static function update_status( WP_REST_Request $request ) {
 		$status = $request->get_param( 'status' );
 		if ( ! in_array( $status, self::EDITABLE_STATUSES, true ) ) {
-			return self::error( __( 'Invalid order ID or status.', 'storeops-for-woocommerce' ), 400 );
+			return self::error( __( 'Invalid order ID or status.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 		list( $order ) = self::wc( 'PUT', 'orders/' . (int) $request['id'], array(), array( 'status' => $status ) );
 		return new WP_REST_Response( $order );
@@ -283,20 +289,20 @@ class StoreOps_Rest {
 			}
 		}
 		if ( ! $valid ) {
-			return self::error( __( 'Provide 1 to 100 valid order IDs and a valid status.', 'storeops-for-woocommerce' ), 400 );
+			return self::error( __( 'Provide 1 to 100 valid order IDs and a valid status.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 		$updated = 0;
 		foreach ( $ids as $id ) {
 			try {
 				self::wc( 'PUT', 'orders/' . (int) $id, array(), array( 'status' => $status ) );
 				++$updated;
-			} catch ( StoreOps_Error $error ) {
+			} catch ( KartoDesk_Error $error ) {
 				continue;
 			}
 		}
 		if ( count( $ids ) !== $updated ) {
 			/* translators: 1: updated count, 2: requested count. */
-			return self::error( sprintf( __( '%1$d of %2$d orders updated. Refresh before retrying.', 'storeops-for-woocommerce' ), $updated, count( $ids ) ), 502, array( 'updated' => $updated ) );
+			return self::error( sprintf( __( '%1$d of %2$d orders updated. Refresh before retrying.', 'kartodesk-for-woocommerce' ), $updated, count( $ids ) ), 502, array( 'updated' => $updated ) );
 		}
 		return new WP_REST_Response( array( 'updated' => $updated ) );
 	}
@@ -310,7 +316,7 @@ class StoreOps_Rest {
 	public static function list_notes( WP_REST_Request $request ) {
 		$type = $request->get_param( 'type' ) ?? 'any';
 		if ( ! in_array( $type, array( 'any', 'customer', 'internal' ), true ) ) {
-			return self::error( __( 'Invalid order ID or note type.', 'storeops-for-woocommerce' ), 400 );
+			return self::error( __( 'Invalid order ID or note type.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 		list( $notes ) = self::wc( 'GET', 'orders/' . (int) $request['id'] . '/notes', array( 'type' => $type ) );
 		return new WP_REST_Response( $notes );
@@ -326,7 +332,7 @@ class StoreOps_Rest {
 		$note          = $request->get_param( 'note' );
 		$customer_note = $request->get_param( 'customer_note' );
 		if ( ! is_string( $note ) || '' === trim( $note ) || mb_strlen( $note ) > 5000 || ( null !== $customer_note && ! is_bool( $customer_note ) ) ) {
-			return self::error( __( 'Provide a valid order ID and a note of up to 5,000 characters.', 'storeops-for-woocommerce' ), 400 );
+			return self::error( __( 'Provide a valid order ID and a note of up to 5,000 characters.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 		list( $created ) = self::wc(
 			'POST',
@@ -390,11 +396,11 @@ class StoreOps_Rest {
 
 	/**
 	 * Reads shipments from an order response. Malformed or duplicated metadata is a conflict, so a later
-	 * write can never overwrite data StoreOps does not understand.
+	 * write can never overwrite data KartoDesk does not understand.
 	 *
 	 * @param array $order Order data from WooCommerce.
 	 * @return array{0: int|null, 1: array} Metadata ID and shipments.
-	 * @throws StoreOps_Error On unreadable data.
+	 * @throws KartoDesk_Error On unreadable data.
 	 */
 	private static function read_shipments( $order ) {
 		$entries = array_values(
@@ -406,13 +412,17 @@ class StoreOps_Rest {
 			)
 		);
 		if ( count( $entries ) > 1 ) {
-			throw new StoreOps_Error( esc_html__( 'This order has more than one wooops_shipments metadata entry. Resolve it in your store before editing tracking.', 'storeops-for-woocommerce' ), 409 );
+			throw new KartoDesk_Error( esc_html__( 'This order has more than one wooops_shipments metadata entry. Resolve it in your store before editing tracking.', 'kartodesk-for-woocommerce' ), 409 );
 		}
 		if ( ! $entries ) {
 			return array( null, array() );
 		}
 		$value = $entries[0]['value'];
 		if ( is_string( $value ) ) {
+			// Associative decoding would turn an empty JSON object into an empty list.
+			if ( ! is_array( json_decode( $value ) ) ) {
+				throw new KartoDesk_Error( esc_html__( 'Stored tracking must be a JSON list. It was left unchanged.', 'kartodesk-for-woocommerce' ), 409 );
+			}
 			$value = json_decode( $value, true );
 		}
 		$valid = is_array( $value ) && array_values( $value ) === $value;
@@ -423,7 +433,7 @@ class StoreOps_Rest {
 			$valid = $valid && count( array_unique( array_column( $value, 'id' ) ) ) === count( $value );
 		}
 		if ( ! $valid ) {
-			throw new StoreOps_Error( esc_html__( 'Stored shipment data on this order is not in the expected tracking format. It was left unchanged.', 'storeops-for-woocommerce' ), 409 );
+			throw new KartoDesk_Error( esc_html__( 'Stored shipment data on this order is not in the expected tracking format. It was left unchanged.', 'kartodesk-for-woocommerce' ), 409 );
 		}
 		$shipments = array_map(
 			static function ( $item ) {
@@ -479,11 +489,11 @@ class StoreOps_Rest {
 	 * @param int   $id       Order ID.
 	 * @param array $order    Order data.
 	 * @param array $shipment Shipment.
-	 * @throws StoreOps_Error When the order has no billing email.
+	 * @throws KartoDesk_Error When the order has no billing email.
 	 */
 	private static function notify_customer( $id, $order, $shipment ) {
 		if ( empty( $order['billing']['email'] ) ) {
-			throw new StoreOps_Error( esc_html__( 'This order has no billing email address, so no customer note was added.', 'storeops-for-woocommerce' ), 400 );
+			throw new KartoDesk_Error( esc_html__( 'This order has no billing email address, so no customer note was added.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 		$link = '' !== $shipment['tracking_url']
 			? ' Track it here: <a href="' . esc_url( $shipment['tracking_url'] ) . '">' . esc_html( $shipment['tracking_url'] ) . '</a>.'
@@ -523,18 +533,18 @@ class StoreOps_Rest {
 			is_string( $fields['shipped_at'] ) && self::valid_date( $fields['shipped_at'] ) &&
 			( null === $notify || is_bool( $notify ) );
 		if ( ! $valid ) {
-			return self::error( __( 'Provide a carrier, tracking number, and valid optional HTTPS link and date.', 'storeops-for-woocommerce' ), 400 );
+			return self::error( __( 'Provide a carrier, tracking number, and valid optional HTTPS link and date.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 
 		$order                     = self::load_order( $id );
 		list( $meta_id, $existing ) = self::read_shipments( $order );
 		if ( count( $existing ) >= 50 ) {
-			return self::error( __( 'This order already has 50 shipments.', 'storeops-for-woocommerce' ), 400 );
+			return self::error( __( 'This order already has 50 shipments.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 		foreach ( $existing as $item ) {
 			if ( strtolower( $item['carrier'] ) === strtolower( trim( $fields['carrier'] ) ) &&
 				strtolower( $item['tracking_number'] ) === strtolower( trim( $fields['tracking_number'] ) ) ) {
-				return self::error( __( 'This tracking number is already saved for that carrier.', 'storeops-for-woocommerce' ), 409, array( 'shipments' => $existing ) );
+				return self::error( __( 'This tracking number is already saved for that carrier.', 'kartodesk-for-woocommerce' ), 409, array( 'shipments' => $existing ) );
 			}
 		}
 		$shipment = array(
@@ -546,7 +556,7 @@ class StoreOps_Rest {
 		);
 		$saved = self::write_shipments( $id, $meta_id, array_merge( $existing, array( $shipment ) ) );
 		if ( ! in_array( $shipment, $saved, true ) ) {
-			return self::error( __( 'Store responded, but the new shipment was not in the saved order. Reload before retrying.', 'storeops-for-woocommerce' ), 502, array( 'shipments' => $saved ) );
+			return self::error( __( 'Store responded, but the new shipment was not in the saved order. Reload before retrying.', 'kartodesk-for-woocommerce' ), 502, array( 'shipments' => $saved ) );
 		}
 
 		// The shipment is saved from here on; a notification failure is partial success, never a failed save.
@@ -556,7 +566,7 @@ class StoreOps_Rest {
 		try {
 			self::notify_customer( $id, $order, $shipment );
 			return new WP_REST_Response( array( 'saved' => true, 'shipments' => $saved, 'email_requested' => true ), 201 );
-		} catch ( StoreOps_Error $error ) {
+		} catch ( KartoDesk_Error $error ) {
 			return new WP_REST_Response(
 				array(
 					'saved'                 => true,
@@ -564,7 +574,7 @@ class StoreOps_Rest {
 					'email_requested'       => false,
 					'email_shipment_id'     => $shipment['id'],
 					'email_error'           => $error->getMessage(),
-					'email_outcome_unknown' => false,
+					'email_outcome_unknown' => $error->status >= 500,
 				),
 				201
 			);
@@ -580,7 +590,7 @@ class StoreOps_Rest {
 	public static function email_shipment( WP_REST_Request $request ) {
 		$shipment_id = $request->get_param( 'shipment_id' );
 		if ( ! is_string( $shipment_id ) || '' === $shipment_id ) {
-			return self::error( __( 'Invalid order or shipment ID.', 'storeops-for-woocommerce' ), 400 );
+			return self::error( __( 'Invalid order or shipment ID.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 		$id                  = (int) $request['id'];
 		$order               = self::load_order( $id );
@@ -591,7 +601,7 @@ class StoreOps_Rest {
 				return new WP_REST_Response( array( 'email_requested' => true ) );
 			}
 		}
-		return self::error( __( 'Shipment not found. Reload the order.', 'storeops-for-woocommerce' ), 404 );
+		return self::error( __( 'Shipment not found. Reload the order.', 'kartodesk-for-woocommerce' ), 404 );
 	}
 
 	/**
@@ -603,7 +613,7 @@ class StoreOps_Rest {
 	public static function remove_shipment( WP_REST_Request $request ) {
 		$shipment_id = $request->get_param( 'shipment_id' );
 		if ( ! is_string( $shipment_id ) || '' === $shipment_id ) {
-			return self::error( __( 'Invalid order or shipment ID.', 'storeops-for-woocommerce' ), 400 );
+			return self::error( __( 'Invalid order or shipment ID.', 'kartodesk-for-woocommerce' ), 400 );
 		}
 		$id                         = (int) $request['id'];
 		list( $meta_id, $shipments ) = self::read_shipments( self::load_order( $id ) );
@@ -616,11 +626,11 @@ class StoreOps_Rest {
 			)
 		);
 		if ( count( $updated ) === count( $shipments ) ) {
-			return self::error( __( 'Shipment not found. It may already have been removed.', 'storeops-for-woocommerce' ), 404, array( 'shipments' => $shipments ) );
+			return self::error( __( 'Shipment not found. It may already have been removed.', 'kartodesk-for-woocommerce' ), 404, array( 'shipments' => $shipments ) );
 		}
 		$saved = self::write_shipments( $id, $meta_id, $updated );
 		if ( in_array( $shipment_id, array_column( $saved, 'id' ), true ) ) {
-			return self::error( __( 'Store responded, but the shipment is still on the order. Reload before retrying.', 'storeops-for-woocommerce' ), 502, array( 'shipments' => $saved ) );
+			return self::error( __( 'Store responded, but the shipment is still on the order. Reload before retrying.', 'kartodesk-for-woocommerce' ), 502, array( 'shipments' => $saved ) );
 		}
 		return new WP_REST_Response( array( 'shipments' => $saved ) );
 	}

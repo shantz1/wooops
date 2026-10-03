@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { ProductThumbnail } from "@/components/product-thumbnail";
+import { fetchJson } from "@/lib/fetch-json";
 
 export function CreateProductForm() {
   const router = useRouter();
@@ -30,10 +31,9 @@ export function CreateProductForm() {
 
     setSaving(true);
     try {
-      const response = await fetch("/api/woo/products", {
+      await fetchJson("/api/woo/products", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        json: {
           name: name.trim(),
           sku: sku.trim(),
           regular_price: price,
@@ -42,12 +42,8 @@ export function CreateProductForm() {
           status,
           manage_stock: manageStock,
           ...(manageStock ? { stock_quantity: Number(stock) } : {}),
-        }),
+        },
       });
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || "Could not create product.");
-      }
       router.push("/products");
       router.refresh();
     } catch (cause) {

@@ -1,6 +1,12 @@
 import { createRoot } from "react-dom/client";
 import Home from "@/app/page";
 import OrdersPage from "@/app/orders/page";
+import ProductsPage from "@/app/products/page";
+import NewProductPage from "@/app/products/new/page";
+import CustomersPage from "@/app/customers/page";
+import InventoryPage from "@/app/inventory/page";
+import ReportsPage from "@/app/reports/page";
+import SettingsPage from "@/app/settings/page";
 import { AppShell } from "@/components/app-shell";
 import { OrderDetail } from "@/components/order-detail";
 import { PanelPreferencesProvider } from "@/components/panel-preferences";
@@ -13,6 +19,12 @@ function Screen() {
   const path = useHashPath();
   if (path === "/") return <Home />;
   if (path === "/orders") return <OrdersPage />;
+  if (path === "/products") return <ProductsPage />;
+  if (path === "/products/new") return <NewProductPage />;
+  if (path === "/customers") return <CustomersPage />;
+  if (path === "/inventory") return <InventoryPage />;
+  if (path === "/reports") return <ReportsPage />;
+  if (path === "/settings") return <SettingsPage />;
   const order = /^\/orders\/([1-9]\d*)$/.exec(path);
   if (order) return <AppShell><OrderDetail key={order[1]} id={order[1]} /></AppShell>;
   return (

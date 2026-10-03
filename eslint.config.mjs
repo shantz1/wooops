@@ -13,7 +13,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     // Generated WordPress plugin bundle and release zips.
-    "wordpress/storeops-for-woocommerce/build/**",
+    "wordpress/*/build/**",
     "wordpress/dist/**",
   ]),
 ]);

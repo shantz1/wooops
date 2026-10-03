@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
-const outDir = here("./storeops-for-woocommerce/build");
+const outDir = here("./kartodesk-for-woocommerce/build");
 
 /**
  * Builds the WordPress plugin bundle from the shared panel components. Output is one classic script
@@ -14,10 +14,10 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     {
-      name: "storeops-copy-logo",
+      name: "kartodesk-copy-logo",
       closeBundle() {
         mkdirSync(outDir, { recursive: true });
-        copyFileSync(here("../public/wo.svg"), `${outDir}/wo.svg`);
+        copyFileSync(here("./app/kartodesk.svg"), `${outDir}/kartodesk.svg`);
       },
     },
   ],
@@ -50,7 +50,7 @@ export default defineConfig({
     lib: {
       entry: here("./app/main.tsx"),
       formats: ["iife"],
-      name: "StoreOps",
+      name: "KartoDesk",
       fileName: () => "app.js",
       cssFileName: "app",
     },

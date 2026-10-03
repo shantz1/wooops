@@ -1,5 +1,5 @@
-=== StoreOps for WooCommerce ===
-Contributors: shantanuudasi
+=== KartoDesk for WooCommerce ===
+Contributors: shantz1
 Tags: woocommerce, orders, shipment tracking, order notes, fulfilment
 Requires at least: 6.5
 Tested up to: 7.1
@@ -12,15 +12,19 @@ A focused order workspace inside wp-admin: review orders, add private or custome
 
 == Description ==
 
-StoreOps gives your team one fast screen for daily order work, without leaving WordPress.
+KartoDesk gives your team one fast screen for daily order work, without leaving WordPress.
 
 * **Overview** of the five most recent orders, clearly labelled as a snapshot rather than store-wide totals.
 * **Orders list** with search, status filter, pagination and bulk status changes (with a confirmation).
 * **Order workspace** with items, photos, SKU and variation details, an exact totals breakdown (items, discount, fees, shipping, tax, refunds), shipping and billing addresses, the customer's checkout note, guest or registered customer, and payment details.
+* **Products and inventory**: browse products, create simple products using Media Library image URLs and update stock.
+* **Customers**: search registered customers.
+* **Reports**: filter orders and inventory and export CSV.
+* **Settings**: panel name and theme, store details and WordPress account access.
 * **Order notes**: read and add private notes or customer-facing notes. The email consequence is shown before a customer note is added.
 * **Shipment tracking** without another plugin: courier, tracking number, optional HTTPS tracking link and shipped date, stored on the order. Optionally add a customer-facing tracking note.
 
-StoreOps uses WooCommerce's own REST API inside your site as the signed-in user. It needs no API keys, stores no data of its own beyond tracking on the order, and makes no requests to external services.
+KartoDesk uses WooCommerce's own REST API inside your site as the signed-in user. It needs no API keys, stores no data of its own beyond tracking on the order, and makes no requests to external services.
 
 = Who can use it =
 
@@ -28,7 +32,7 @@ Users with the `manage_woocommerce` capability (Shop managers and Administrators
 
 = Emails =
 
-Customer-facing notes are sent by WooCommerce's **Customer note** email to the order's billing email, if that email is enabled under WooCommerce → Settings → Emails. StoreOps reports only that WooCommerce accepted the note; it cannot confirm delivery. Changing an order status can also trigger WooCommerce's own status emails.
+Customer-facing notes are sent by WooCommerce's **Customer note** email to the order's billing email, if that email is enabled under WooCommerce → Settings → Emails. KartoDesk reports only that WooCommerce accepted the note; it cannot confirm delivery. Changing an order status can also trigger WooCommerce's own status emails.
 
 = Source code =
 
@@ -37,9 +41,9 @@ The JavaScript in `build/` is compiled from TypeScript and React source in the p
 == Installation ==
 
 1. Install and activate WooCommerce.
-2. Upload the `storeops-for-woocommerce` folder to `/wp-content/plugins/`, or upload the zip under Plugins → Add New → Upload Plugin.
-3. Activate **StoreOps for WooCommerce**.
-4. Open **StoreOps** in the admin menu.
+2. Upload the `kartodesk-for-woocommerce` folder to `/wp-content/plugins/`, or upload the zip under Plugins → Add New → Upload Plugin.
+3. Activate **KartoDesk for WooCommerce**.
+4. Open **KartoDesk** in the admin menu.
 
 == Frequently Asked Questions ==
 
@@ -59,15 +63,17 @@ Avoid it. Tracking is saved as one value on the order; two simultaneous edits ca
 
 Yes. It works through WooCommerce's REST controllers and declares HPOS compatibility.
 
-= What about products, customers and reports? =
+= What else can I manage? =
 
-This first version covers orders. Use WooCommerce's screens for everything else for now.
+Products, simple product creation, stock, registered customers, order and inventory reports with CSV, and panel settings. Product and customer lists show up to 50 results per search. Reports load up to 500 records and flag incomplete results; inventory reports exclude variation stock. Saving a stock quantity enables stock management.
 
 == Privacy ==
 
-StoreOps does not track users, send data to third parties or load remote assets. It displays customer details that WooCommerce already stores, only to users who can manage WooCommerce.
+KartoDesk does not track users, send data to third parties or load remote assets. It displays customer details that WooCommerce already stores, only to users who can manage WooCommerce.
 
 == Changelog ==
 
 = 0.1.0 =
 * First release: overview, orders list, order workspace, order notes and shipment tracking.
+
+The clean panel URL is `/manage/` (under the WordPress installation path). Use readable permalinks. After updating, save Settings > Permalinks once if the URL returns 404. An existing page named `manage` takes priority; use the wp-admin menu instead. When replacing the earlier StoreOps test plugin, deactivate it before activating KartoDesk.
