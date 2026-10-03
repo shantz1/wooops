@@ -1,3 +1,6 @@
+import { plainText } from "@/lib/format";
+import { apiHeaders, apiUrl, wordpressRuntime } from "@/lib/runtime";
+
 /** An error from a WooOps API route. `status` is 0 when the request never reached WooOps. */
 export class RequestError<T = unknown> extends Error {
   constructor(message: string, readonly status: number, readonly body?: T) {
@@ -18,17 +21,21 @@ export async function fetchJson<T>(input: string, init?: RequestInit & { json?: 
   const { json, ...rest } = init || {};
   let response: Response;
   try {
-    response = await fetch(input, json === undefined ? rest : {
-      ...rest, headers: { "Content-Type": "application/json", ...rest.headers }, body: JSON.stringify(json),
-    });
+    const headers = { ...apiHeaders(), ...(json === undefined ? {} : { "Content-Type": "application/json" }), ...rest.headers };
+    response = await fetch(apiUrl(input), json === undefined ? { ...rest, headers } : { ...rest, headers, body: JSON.stringify(json) });
   } catch (error) {
     if (isAbortError(error)) throw error;
-    throw new RequestError("Could not reach WooOps. Check your connection; if you were saving, reload before retrying.", 0);
+    throw new RequestError("Could not reach the server. Check your connection; if you were saving, reload before retrying.", 0);
   }
-  const body = await response.json().catch(() => null) as (T & { error?: string }) | null;
-  if (response.status === 401) throw new RequestError("Your WooOps session has expired. Sign in again.", 401, body);
-  if (!response.ok) throw new RequestError(body?.error || `WooOps returned ${response.status}.`, response.status, body);
-  if (body === null) throw new RequestError("WooOps returned an unreadable response.", response.status);
+  const body = await response.json().catch(() => null) as (T & { error?: string; code?: string; message?: string }) | null;
+  if (wordpressRuntime() && (response.status === 401 || body?.code === "rest_cookie_invalid_nonce")) {
+    throw new RequestError("Your WordPress session has expired. Reload the page and sign in again.", response.status, body);
+  }
+  if (response.status === 401) throw new RequestError("Your session has expired. Sign in again.", 401, body);
+  // WordPress REST errors use `message`; WooOps routes use `error`.
+  // The WordPress plugin HTML-escapes messages; plainText decodes them for display as text.
+  if (!response.ok) throw new RequestError(plainText(body?.error || body?.message || "") || `The server returned ${response.status}.`, response.status, body);
+  if (body === null) throw new RequestError("The server returned an unreadable response.", response.status);
   return body;
 }
 

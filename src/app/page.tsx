@@ -8,6 +8,7 @@ import { OrderStatusBadge } from "@/components/order-status-badge";
 import { EmptyState, ErrorState, LoadingState, Notice, RetryButton } from "@/components/ui/feedback";
 import { formatDateTime, wooDate } from "@/lib/format";
 import { formatMoney, sumDecimals } from "@/lib/money";
+import { isAvailable } from "@/lib/runtime";
 import { useRemote } from "@/lib/use-remote";
 import type { WooOrder } from "@/types/woocommerce";
 
@@ -40,7 +41,7 @@ export default function Home() {
       </div>
       <div className="flex gap-2">
         <RetryButton onRetry={reload} busy={loading} label="Refresh" />
-        <Link href="/settings" className="inline-flex w-fit items-center gap-2 rounded-lg border bg-background px-4 py-2 text-sm font-medium hover:bg-muted">Store connection<ArrowUpRight className="size-4" aria-hidden="true" /></Link>
+        {isAvailable("/settings") && <Link href="/settings" className="inline-flex w-fit items-center gap-2 rounded-lg border bg-background px-4 py-2 text-sm font-medium hover:bg-muted">Store connection<ArrowUpRight className="size-4" aria-hidden="true" /></Link>}
       </div>
     </section>
     {error && data && <Notice tone="error">Showing the last loaded orders. {error}</Notice>}
@@ -64,7 +65,7 @@ export default function Home() {
       </div>
       <div className="rounded-xl border bg-background p-6 shadow-sm">
         <h2 className="font-semibold">Quick actions</h2>
-        <div className="mt-4 space-y-2">{[["/orders", "View all orders"], ["/products", "Manage products"], ["/customers", "Find a customer"], ["/settings", "Connection settings"]].map(([href, label]) => <Link key={href} href={href} className="flex items-center justify-between rounded-lg border p-3 text-sm hover:bg-muted"><span>{label}</span><ArrowUpRight className="size-4" aria-hidden="true" /></Link>)}</div>
+        <div className="mt-4 space-y-2">{[["/orders", "View all orders"], ["/products", "Manage products"], ["/customers", "Find a customer"], ["/settings", "Connection settings"]].filter(([href]) => isAvailable(href)).map(([href, label]) => <Link key={href} href={href} className="flex items-center justify-between rounded-lg border p-3 text-sm hover:bg-muted"><span>{label}</span><ArrowUpRight className="size-4" aria-hidden="true" /></Link>)}</div>
       </div>
     </section>
   </div></AppShell>;

@@ -84,7 +84,7 @@ function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooO
         {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}Save status
       </button>
       <p className="mt-3 text-xs text-muted-foreground">Status changes are separate from shipments. Store may send its own status emails (for example, Completed order) depending on store settings.</p>
-      {custom && <p className="mt-2 text-xs text-muted-foreground">This order uses a custom status from your store or an extension. WooOps can move it to a standard status but cannot set custom ones.</p>}
+      {custom && <p className="mt-2 text-xs text-muted-foreground">This order uses a custom status from your store or an extension. This panel can move it to a standard status but cannot set custom ones.</p>}
       {result && <Notice tone={result.tone} className="mt-3">{result.message}</Notice>}
     </section>
   );

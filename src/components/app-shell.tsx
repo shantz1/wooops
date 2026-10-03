@@ -4,8 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { BarChart3, Boxes, LayoutDashboard, Loader2, LogOut, Menu, Package, Settings, ShoppingCart, Users, X } from "lucide-react";
+import { ArrowLeft, BarChart3, Boxes, LayoutDashboard, Loader2, LogOut, Menu, Package, Settings, ShoppingCart, Users, X } from "lucide-react";
 import { usePanelPreferences } from "@/components/panel-preferences";
+import { isAvailable as available, wordpressRuntime } from "@/lib/runtime";
 
 const navigation = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
@@ -36,9 +37,11 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
   return (
     <>
       <p className="px-3 pb-2 pt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Workspace</p>
-      {navigation.map(item => link(item.href, item.label, item.icon))}
-      <p className="px-3 pb-2 pt-7 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">System</p>
-      {link("/settings", "Settings", Settings)}
+      {navigation.filter(item => available(item.href)).map(item => link(item.href, item.label, item.icon))}
+      {available("/settings") && <>
+        <p className="px-3 pb-2 pt-7 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">System</p>
+        {link("/settings", "Settings", Settings)}
+      </>}
     </>
   );
 }
@@ -47,13 +50,18 @@ function Brand() {
   const { preferences } = usePanelPreferences();
   return (
     <div className="flex items-center gap-2.5 font-semibold tracking-tight">
-      <Image src="/wo.svg" width={36} height={36} alt="" className="size-9 shrink-0 rounded-lg shadow-sm" />
+      <Image src={`${wordpressRuntime()?.assetsUrl ?? "/"}wo.svg`} width={36} height={36} alt="" className="size-9 shrink-0 rounded-lg shadow-sm" />
       <span className="max-w-40 truncate">{preferences.name}</span>
     </div>
   );
 }
 
+/** WordPress manages sign-in for the plugin; the header's dashboard button is the way back to wp-admin. */
 function SignOut() {
+  return wordpressRuntime() ? null : <PasswordSignOut />;
+}
+
+function PasswordSignOut() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -138,7 +146,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <div className="min-w-0"><p className="truncate text-sm font-medium">Operations</p><p className="truncate text-xs text-muted-foreground">Your store, in focus</p></div>
           </div>
-          <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">Store workspace</div>
+          {wordpressRuntime()
+            ? <a href={wordpressRuntime()!.adminUrl} className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border bg-background px-3 py-2 text-sm font-medium hover:bg-muted ${focusRing}`}>
+                <ArrowLeft className="size-4" aria-hidden="true" /><span>WordPress<span className="hidden sm:inline"> dashboard</span></span>
+              </a>
+            : <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">Store workspace</div>}
         </header>
         <main id="main" tabIndex={-1} className="mx-auto max-w-[1500px] p-4 outline-none sm:p-5 lg:p-8">{children}</main>
       </div>

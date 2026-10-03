@@ -45,7 +45,7 @@ export function readShipments(order: OrderWithMeta) {
     try { value = JSON.parse(value); } catch { value = null; }
   }
   if (!Array.isArray(value) || !value.every(isShipment) || new Set(value.map(item => item.id)).size !== value.length) {
-    throw new WooApiError("Stored shipment data on this order is not in the WooOps format. It was left unchanged.", 409);
+    throw new WooApiError("Stored shipment data on this order is not in the expected tracking format. It was left unchanged.", 409);
   }
   return { metaId: meta.id, shipments: value };
 }

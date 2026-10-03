@@ -1,0 +1,86 @@
+/*
+ * StoreOps styles inside wp-admin.
+ * - Tailwind's global preflight is not loaded, so wp-admin itself is never restyled.
+ * - wp-admin CSS is unlayered and would beat layered utilities, so utilities are marked important.
+ * - The reset below is scoped to #storeops-root with ID specificity so it outranks wp-admin's element styles.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) important;
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "../../src/app/theme.css";
+
+@source "../../src";
+@source "./";
+
+/* The panel takes over the viewport like a full-screen app; "Back to WordPress" returns to wp-admin. */
+body.storeops-app { overflow: hidden; }
+
+#storeops-root {
+  --font-geist-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  position: fixed;
+  inset: 0;
+  z-index: 100000; /* Above the WordPress admin bar (99999). */
+  overflow: auto;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#storeops-root *, #storeops-root ::before, #storeops-root ::after, #storeops-root ::backdrop {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid var(--border);
+  outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
+#storeops-root :is(h1, h2, h3, h4, h5, h6) { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; }
+#storeops-root :is(p, dl, dd, address, figure, blockquote) { font-size: inherit; line-height: inherit; }
+#storeops-root :is(ol, ul, li) { list-style: none; }
+#storeops-root a { color: inherit; text-decoration: inherit; }
+#storeops-root a:is(:hover, :focus, :active) { color: inherit; box-shadow: none; }
+#storeops-root :is(img, svg, video) { display: block; vertical-align: middle; }
+#storeops-root :is(img, video) { max-width: 100%; height: auto; }
+#storeops-root table { border-collapse: collapse; text-indent: 0; }
+#storeops-root :is(b, strong) { font-weight: 600; }
+
+#storeops-root :is(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  vertical-align: baseline;
+}
+#storeops-root :is(button, input, select, textarea):focus { box-shadow: none; }
+#storeops-root :is(button, [role="button"]) { cursor: pointer; }
+#storeops-root :disabled { cursor: default; }
+#storeops-root select { appearance: auto; }
+#storeops-root input::placeholder, #storeops-root textarea::placeholder { color: var(--muted-foreground); opacity: 1; }
+
+/* wp-admin draws custom checkboxes and radios; restore the native controls inside the panel. */
+#storeops-root :is([type="checkbox"], [type="radio"]) {
+  appearance: auto;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  border: 0;
+  vertical-align: middle;
+}
+#storeops-root :is([type="checkbox"], [type="radio"])::before { content: none !important; }
+
+#storeops-root dialog { color: inherit; }
+#storeops-root dialog::backdrop { background: rgb(0 0 0 / 0.4); }

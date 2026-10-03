@@ -87,7 +87,7 @@ export function OrderItems({ order }: { order: WooOrder }) {
         {(!totals.valid || !totals.reconciles) && <Notice tone="info" className="mt-4">
           {totals.valid
             ? "These lines do not add up exactly to Store's order total (for example because of rounding or an extension). The order total shown is Store's own value."
-            : "Store returned an amount WooOps could not read, so the breakdown may be incomplete. The order total shown is Store's own value."}
+            : "Store returned an amount that could not be read, so the breakdown may be incomplete. The order total shown is Store's own value."}
         </Notice>}
       </div>
     </section>

@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { ExternalLink, Loader2, Mail, Trash2, Truck } from "lucide-react";
 import { ErrorState, LoadingState, Notice, RetryButton } from "@/components/ui/feedback";
 import { errorMessage, fetchJson, RequestError } from "@/lib/fetch-json";
+import { plainText } from "@/lib/format";
 import { useRemote } from "@/lib/use-remote";
 import type { Shipment } from "@/lib/woocommerce/shipments";
 
@@ -69,9 +70,9 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
         const shipment = result.shipments?.find(item => item.id === result.email_shipment_id);
         if (result.email_outcome_unknown) {
           onNotesChanged?.();
-          return { tone: "warning", message: `Shipment saved. The customer note outcome is unknown: ${result.email_error}` };
+          return { tone: "warning", message: `Shipment saved. The customer note outcome is unknown: ${plainText(result.email_error)}` };
         }
-        return { tone: "warning", message: `Shipment saved, but the customer note was not added: ${result.email_error}`, retryEmailFor: shipment };
+        return { tone: "warning", message: `Shipment saved, but the customer note was not added: ${plainText(result.email_error)}`, retryEmailFor: shipment };
       }
       if (result.email_requested) {
         onNotesChanged?.();
@@ -123,7 +124,7 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
               <button type="button" disabled={saving} onClick={() => removeShipment(shipment)} aria-label={`Remove tracking number ${shipment.tracking_number}`} className="rounded-md border p-1.5 text-destructive disabled:opacity-50"><Trash2 className="size-4" aria-hidden="true" /></button>
             </div>
           </li>)}
-        </ul> : <p className="mt-5 text-sm text-muted-foreground">Tracking not recorded in WooOps.</p>}
+        </ul> : <p className="mt-5 text-sm text-muted-foreground">No tracking recorded for this order yet.</p>}
 
       {feedback && <Notice tone={feedback.tone} className="mt-4" action={feedback.retryEmailFor && customerEmail
         ? <RetryButton onRetry={() => emailCustomer(feedback.retryEmailFor!)} busy={saving} label="Try the email again" /> : undefined}>
@@ -150,7 +151,7 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
           <input type="checkbox" checked={notify && Boolean(customerEmail)} disabled={!customerEmail} onChange={event => setNotify(event.target.checked)} className="mt-1" />
           <span>Also add a customer-facing tracking note{customerEmail ? <>, which Store may email to <span className="break-all">{customerEmail}</span></> : " (no billing email on this order, so no email is possible)"}</span>
         </label>
-        <p className="text-xs text-muted-foreground">Email depends on Store&apos;s Customer note email being enabled and the store being able to send mail. WooOps cannot confirm delivery.</p>
+        <p className="text-xs text-muted-foreground">Email depends on Store&apos;s Customer note email being enabled and the store being able to send mail. Delivery cannot be confirmed from here.</p>
         <button disabled={saving || !shipments} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
           {saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />} Add shipment{notify && customerEmail ? " and notify customer" : ""}
         </button>

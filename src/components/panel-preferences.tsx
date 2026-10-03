@@ -2,9 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
+import { apiHeaders, apiUrl, wordpressRuntime } from "@/lib/runtime";
 
 export type PanelPreferences = { name: string; theme: "system" | "light" | "dark" };
-const defaults: PanelPreferences = { name: "WooOps", theme: "system" };
+// The WordPress plugin ships under its own name; the standalone app keeps WooOps.
+const defaults: PanelPreferences = { name: wordpressRuntime() ? "StoreOps" : "WooOps", theme: "system" };
 const Context = createContext<{ timeZone: string; preferences: PanelPreferences; save: (value: PanelPreferences) => void }>({ timeZone: "UTC", preferences: defaults, save: () => {} });
 
 export function PanelPreferencesProvider({ children }: { children: React.ReactNode }) {
@@ -12,7 +14,7 @@ export function PanelPreferencesProvider({ children }: { children: React.ReactNo
   const [timeZone, setTimeZone] = useState("UTC");
   useEffect(() => {
     const controller = new AbortController();
-    const read = () => fetch("/api/settings", { signal: controller.signal }).then(response => response.ok ? response.json() : null).then(data => { if (data?.timezone) setTimeZone(data.timezone); }).catch(() => {});
+    const read = () => fetch(apiUrl("/api/settings"), { signal: controller.signal, headers: apiHeaders() }).then(response => response.ok ? response.json() : null).then(data => { if (data?.timezone) setTimeZone(data.timezone); }).catch(() => {});
     void read();
     window.addEventListener("focus", read);
     return () => { controller.abort(); window.removeEventListener("focus", read); };

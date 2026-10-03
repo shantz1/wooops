@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test \"test/**/*.test.mjs\"",
-    "test:integration": "node --test test/integration/shipments.mjs"
+    "test:integration": "node --test test/integration/shipments.mjs",
+    "build:wp": "vite build -c wordpress/vite.config.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -23,12 +24,14 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.7",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^8.3.2"
   }
 }
