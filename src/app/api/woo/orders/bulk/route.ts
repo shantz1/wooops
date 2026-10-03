@@ -1,9 +1,13 @@
+import { authorizeRequest } from "@/lib/request-guard";
+import { readRequestJson } from "@/lib/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { wooFetch } from "@/lib/woocommerce/client";
 import { isId, isOrderStatus } from "@/lib/woocommerce/validation";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
+  const body = await readRequestJson(request).catch(() => null);
   if (!body || !Array.isArray(body.ids) || body.ids.length < 1 || body.ids.length > 100 ||
       !body.ids.every(isId) || !isOrderStatus(body.status)) {
     return NextResponse.json({ error: "Provide 1 to 100 valid order IDs and a valid status." }, { status: 400 });

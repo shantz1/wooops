@@ -1,14 +1,16 @@
 import { createRoot } from "react-dom/client";
-import Home from "@/app/page";
-import OrdersPage from "@/app/orders/page";
-import ProductsPage from "@/app/products/page";
-import NewProductPage from "@/app/products/new/page";
-import CustomersPage from "@/app/customers/page";
-import InventoryPage from "@/app/inventory/page";
-import ReportsPage from "@/app/reports/page";
-import SettingsPage from "@/app/settings/page";
+import { Component, lazy, Suspense, type ReactNode } from "react";
+import { LoadingState, ErrorState } from "@/components/ui/feedback";
+const Home = lazy(() => import("@/app/page"));
+const OrdersPage = lazy(() => import("@/app/orders/page"));
+const ProductsPage = lazy(() => import("@/app/products/page"));
+const NewProductPage = lazy(() => import("@/app/products/new/page"));
+const CustomersPage = lazy(() => import("@/app/customers/page"));
+const InventoryPage = lazy(() => import("@/app/inventory/page"));
+const ReportsPage = lazy(() => import("@/app/reports/page"));
+const SettingsPage = lazy(() => import("@/app/settings/page"));
 import { AppShell } from "@/components/app-shell";
-import { OrderDetail } from "@/components/order-detail";
+const OrderDetail = lazy(() => import("@/components/order-detail").then(module => ({ default: module.OrderDetail })));
 import { PanelPreferencesProvider } from "@/components/panel-preferences";
 import { EmptyState } from "@/components/ui/feedback";
 import { HashRouter, useHashPath } from "./router";
@@ -36,11 +38,21 @@ function Screen() {
   );
 }
 
+class ScreenErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    return this.state.failed
+      ? <AppShell><ErrorState message="This screen could not load. Reload the panel to try again." onRetry={() => window.location.reload()} /></AppShell>
+      : this.props.children;
+  }
+}
+
 const root = document.getElementById("storeops-root");
 if (root) {
   createRoot(root).render(
     <HashRouter>
-      <PanelPreferencesProvider><Screen /></PanelPreferencesProvider>
+      <PanelPreferencesProvider><ScreenErrorBoundary><Suspense fallback={<AppShell><LoadingState label="Loading workspace?" /></AppShell>}><Screen /></Suspense></ScreenErrorBoundary></PanelPreferencesProvider>
     </HashRouter>,
   );
 }

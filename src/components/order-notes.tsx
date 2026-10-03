@@ -17,7 +17,7 @@ type Audience = "private" | "customer";
  * WooCommerce emails them when its "Customer note" email is enabled. Acceptance is not proof of delivery.
  */
 export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: string; customerEmail?: string; refreshKey: number }) {
-  const { timeZone } = usePanelPreferences();
+  const { timeZone, canWrite } = usePanelPreferences();
   const endpoint = `/api/woo/orders/${orderId}/notes`;
   const { data: notes, error, loading, reload } = useRemote<WooOrderNote[]>(endpoint, "Could not load notes.", refreshKey);
   const [text, setText] = useState("");
@@ -31,7 +31,7 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const note = text.trim();
-    if (!note || inFlight.current) return;
+    if (!canWrite || !note || inFlight.current) return;
     if (toCustomer && !window.confirm(customerEmail
       ? `Add a customer-facing note? Store will show it to the customer and may email it to ${customerEmail}. This cannot be recalled.`
       : "Add a customer-facing note? This order has no billing email, so Store cannot email it.")) return;
@@ -49,7 +49,7 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
         : { tone: "success", message: "Private note added." });
       reload();
     } catch (cause) {
-      const ambiguous = cause instanceof RequestError && (cause.status === 0 || cause.status === 504);
+      const ambiguous = cause instanceof RequestError && (cause.status === 0 || cause.status === 502 || cause.status === 504);
       setResult(ambiguous
         ? { tone: "warning", message: `${errorMessage(cause, "The note request did not complete.")} The note may have been saved — check the list below before adding it again.` }
         : { tone: "error", message: errorMessage(cause, "Could not add the note.") });
@@ -68,7 +68,7 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
         <RetryButton onRetry={reload} busy={loading} label="Refresh" />
       </div>
 
-      <form onSubmit={submit} className="space-y-3 border-b p-5">
+      {canWrite && <form onSubmit={submit} className="space-y-3 border-b p-5">
         <label htmlFor="note-text" className="text-sm font-medium">Add a note</label>
         <textarea id="note-text" rows={3} maxLength={5000} value={text} onChange={event => setText(event.target.value)}
           className="w-full rounded-lg border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
@@ -95,7 +95,7 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
             {saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}{toCustomer ? "Add note for customer" : "Add private note"}
           </button>
         </div>
-      </form>
+      </form>}
 
       {error && notes && <Notice tone="error" className="m-5 mb-0" action={<RetryButton onRetry={reload} busy={loading} />}>Showing the last loaded notes. {error}</Notice>}
       {!notes ? (loading ? <LoadingState label="Loading notes…" className="py-10" /> : <ErrorState message={error || "Could not load notes."} onRetry={reload} className="py-10" />)

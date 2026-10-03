@@ -1,2 +1,15 @@
-import{NextResponse}from"next/server";import{isWooCommerceConfigured,wooFetch}from"@/lib/woocommerce/client";
-export async function GET(){if(!isWooCommerceConfigured())return NextResponse.json({configured:false});try{const system=await wooFetch<{environment?:{version?:string};version?:string}>("system_status");return NextResponse.json({configured:true,woocommerce_version:system.environment?.version||system.version||null});}catch(e){return NextResponse.json({configured:true,error:e instanceof Error?e.message:"Connection failed"},{status:502});}}
+import { authorizeRequest } from "@/lib/request-guard";
+import { NextRequest, NextResponse } from "next/server";
+import { isWooCommerceConfigured, wooFetch } from "@/lib/woocommerce/client";
+
+export async function GET(request: NextRequest) {
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
+  if (!isWooCommerceConfigured()) return NextResponse.json({ configured: false });
+  try {
+    await wooFetch("products?per_page=1&_fields=id");
+    return NextResponse.json({ configured: true });
+  } catch (error) {
+    return NextResponse.json({ configured: true, error: error instanceof Error ? error.message : "Connection failed" }, { status: 502 });
+  }
+}

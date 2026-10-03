@@ -1,3 +1,5 @@
+import { authorizeRequest } from "@/lib/request-guard";
+import { readRequestJson } from "@/lib/request-body";
 import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { WooApiError, wooFetch } from "@/lib/woocommerce/client";
@@ -69,7 +71,9 @@ async function notifyCustomer(id: string, order: OrderWithMeta, shipment: Shipme
   }
 }
 
-export async function GET(_: NextRequest, { params }: Context) {
+export async function GET(request: NextRequest, { params }: Context) {
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
   const { id } = await params;
   if (!isId(id)) return NextResponse.json({ error: "Invalid order ID." }, { status: 400 });
   try {
@@ -81,8 +85,10 @@ export async function GET(_: NextRequest, { params }: Context) {
 }
 
 export async function POST(request: NextRequest, { params }: Context) {
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
   const { id } = await params;
-  const body = await request.json().catch(() => null);
+  const body = await readRequestJson(request).catch(() => null);
   if (!isId(id) || !body || typeof body.carrier !== "string" || !body.carrier.trim() || body.carrier.length > 80 ||
       typeof body.tracking_number !== "string" || !body.tracking_number.trim() || body.tracking_number.length > 120 ||
       typeof body.tracking_url !== "string" || !validTrackingUrl(body.tracking_url.trim()) ||
@@ -131,8 +137,10 @@ export async function POST(request: NextRequest, { params }: Context) {
 }
 
 export async function PATCH(request: NextRequest, { params }: Context) {
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
   const { id } = await params;
-  const body = await request.json().catch(() => null);
+  const body = await readRequestJson(request).catch(() => null);
   if (!isId(id) || typeof body?.shipment_id !== "string" || !body.shipment_id) {
     return NextResponse.json({ error: "Invalid order or shipment ID." }, { status: 400 });
   }
@@ -148,8 +156,10 @@ export async function PATCH(request: NextRequest, { params }: Context) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Context) {
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
   const { id } = await params;
-  const body = await request.json().catch(() => null);
+  const body = await readRequestJson(request).catch(() => null);
   if (!isId(id) || typeof body?.shipment_id !== "string" || !body.shipment_id) {
     return NextResponse.json({ error: "Invalid order or shipment ID." }, { status: 400 });
   }

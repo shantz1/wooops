@@ -7,10 +7,11 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const outDir = here("./kartodesk-for-woocommerce/build");
 
 /**
- * Builds the WordPress plugin bundle from the shared panel components. Output is one classic script
- * (so WordPress can print the config before it) plus one stylesheet, with stable names for the plugin.
+ * Builds the WordPress plugin bundle from the shared panel components. Output is an ES module entry, local screen chunks and one stylesheet. WordPress prints the
+ * runtime config before the entry; the stable entry names are used by the plugin.
  */
 export default defineConfig({
+  base: "./",
   plugins: [
     tailwindcss(),
     {
@@ -49,7 +50,7 @@ export default defineConfig({
     },
     lib: {
       entry: here("./app/main.tsx"),
-      formats: ["iife"],
+      formats: ["es"],
       name: "KartoDesk",
       fileName: () => "app.js",
       cssFileName: "app",

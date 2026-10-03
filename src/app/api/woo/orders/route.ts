@@ -1,10 +1,13 @@
+import { authorizeRequest } from "@/lib/request-guard";
 import { NextRequest, NextResponse } from "next/server";
-import { isWooCommerceConfigured, wooFetch, wooFetchWithHeaders } from "@/lib/woocommerce/client";
+import { isWooCommerceConfigured, wooFetchWithHeaders } from "@/lib/woocommerce/client";
 import { wooErrorResponse } from "@/lib/woocommerce/errors";
 import { pageParam, searchParam } from "@/lib/woocommerce/validation";
 import type { WooOrder } from "@/types/woocommerce";
 
 export async function GET(request: NextRequest) {
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
   if (!isWooCommerceConfigured()) return NextResponse.json({ configured: false, orders: [], total: 0, pages: 0 });
   const params = request.nextUrl.searchParams;
   const status = params.get("status") || "all";
@@ -15,6 +18,7 @@ export async function GET(request: NextRequest) {
     per_page: String(pageParam(params.get("per_page"), 20, 100)),
     orderby: "date",
     order: "desc",
+    _fields: "id,number,status,currency,total,date_created,date_created_gmt,customer_id,billing.first_name,billing.last_name,billing.email,payment_method_title",
   });
   const search = searchParam(params.get("search"));
   if (search) query.set("search", search);
@@ -28,11 +32,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const order = await wooFetch<WooOrder>("orders", { method: "POST", body: JSON.stringify(body) });
-    return NextResponse.json(order, { status: 201 });
-  } catch (error) {
-    return wooErrorResponse(error, "Unable to create order.");
-  }
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
+  // No order creation UI exists yet; do not expose an unvalidated pass-through write.
+  void request;
+  return NextResponse.json({ error: "Order creation is not supported." }, { status: 405, headers: { Allow: "GET" } });
 }

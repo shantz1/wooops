@@ -2,23 +2,24 @@
 
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
-import { apiHeaders, apiUrl, wordpressRuntime } from "@/lib/runtime";
+import { wordpressRuntime } from "@/lib/runtime";
+import { useRemote } from "@/lib/use-remote";
 
 export type PanelPreferences = { name: string; theme: "system" | "light" | "dark" };
 // The WordPress plugin ships under its own name; the standalone app keeps WooOps.
 const defaults: PanelPreferences = { name: wordpressRuntime() ? "KartoDesk" : "WooOps", theme: "system" };
-const Context = createContext<{ timeZone: string; preferences: PanelPreferences; save: (value: PanelPreferences) => void }>({ timeZone: "UTC", preferences: defaults, save: () => {} });
+const Context = createContext<{ timeZone: string; canWrite: boolean; preferences: PanelPreferences; save: (value: PanelPreferences) => void }>({ timeZone: "UTC", canWrite: false, preferences: defaults, save: () => {} });
 
 export function PanelPreferencesProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [timeZone, setTimeZone] = useState("UTC");
+  const { data: workspace, reload } = useRemote<{ timezone: string; access: { role: string } }>(pathname === "/login" ? null : "/api/timezone", "Could not load workspace access.");
+  const timeZone = workspace?.timezone || "UTC";
+  const canWrite = workspace?.access.role === "admin";
   useEffect(() => {
-    const controller = new AbortController();
-    const read = () => fetch(apiUrl("/api/settings"), { signal: controller.signal, headers: apiHeaders() }).then(response => response.ok ? response.json() : null).then(data => { if (data?.timezone) setTimeZone(data.timezone); }).catch(() => {});
-    void read();
-    window.addEventListener("focus", read);
-    return () => { controller.abort(); window.removeEventListener("focus", read); };
-  }, [pathname]);
+    if (pathname === "/login") return;
+    window.addEventListener("focus", reload);
+    return () => window.removeEventListener("focus", reload);
+  }, [pathname, reload]);
   const [preferences, setPreferences] = useState(defaults);
   useEffect(() => {
     try {
@@ -41,7 +42,7 @@ export function PanelPreferencesProvider({ children }: { children: React.ReactNo
     localStorage.setItem("wooops:panel-preferences", JSON.stringify(next));
     setPreferences(next);
   }
-  return <Context.Provider value={{ timeZone, preferences, save }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ timeZone, canWrite, preferences, save }}>{children}</Context.Provider>;
 }
 
 export const usePanelPreferences = () => useContext(Context);

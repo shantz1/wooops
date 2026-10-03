@@ -8,13 +8,14 @@ import { errorMessage, fetchJson, isAbortError } from "@/lib/fetch-json";
  * never replace newer ones. Failed refreshes keep the last loaded data and expose the error separately.
  * Changing `refreshKey` reloads, letting a parent refresh this data after a related change.
  */
-export function useRemote<T>(url: string, fallbackError: string, refreshKey: unknown = 0) {
+export function useRemote<T>(url: string | null, fallbackError: string, refreshKey: unknown = 0) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
+    if (!url) return;
     const controller = new AbortController();
     queueMicrotask(() => {
       if (controller.signal.aborted) return;

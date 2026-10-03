@@ -1,3 +1,7 @@
+import "server-only";
+import { createReadPool } from "@/lib/read-pool";
+
+const reads = createReadPool();
 const storeUrl = process.env.WOOCOMMERCE_URL?.replace(/\/$/, "");
 const consumerKey = process.env.WOOCOMMERCE_CONSUMER_KEY;
 const consumerSecret = process.env.WOOCOMMERCE_CONSUMER_SECRET;
@@ -51,12 +55,12 @@ async function request(path: string, init: RequestInit = {}) {
     }
     throw new WooApiError("Could not reach the store. Check the store URL, HTTPS certificate and network access.", 502);
   }
-  if (!response.ok) throw new WooApiError(statusMessage(response.status), response.status === 404 ? 404 : 502);
+  if (!response.ok) throw new WooApiError(statusMessage(response.status), [400, 404, 409, 429].includes(response.status) ? response.status : 502);
   return response;
 }
 
 export async function wooFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  return readJson<T>(await request(path, init));
+  return (await wooFetchWithHeaders<T>(path, init)).data;
 }
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -70,10 +74,20 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export async function wooFetchWithHeaders<T>(path: string, init: RequestInit = {}) {
-  const response = await request(path, init);
-  return {
-    data: await readJson<T>(response),
-    total: Number(response.headers.get("X-WP-Total") || 0),
-    pages: Number(response.headers.get("X-WP-TotalPages") || 1),
+  const load = async (options: RequestInit) => {
+    const response = await request(path, options);
+    return {
+      data: await readJson<T>(response),
+      total: Number(response.headers.get("X-WP-Total") || 0),
+      pages: Number(response.headers.get("X-WP-TotalPages") || 1),
+    };
   };
+  const method = (init.method || "GET").toUpperCase();
+  if (method === "GET" && !init.signal && !init.headers) {
+    return reads.read(path, signal => load({ ...init, signal: AbortSignal.any([signal, AbortSignal.timeout(requestTimeout)]) }));
+  }
+  if (method === "GET") return load(init);
+  reads.clear();
+  try { return await load(init); }
+  finally { reads.clear(); }
 }

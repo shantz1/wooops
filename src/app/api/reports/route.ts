@@ -1,3 +1,4 @@
+import { authorizeRequest } from "@/lib/request-guard";
 import { readStoreTimezone } from "@/lib/woocommerce/store-timezone";
 import { storeDateBounds } from "@/lib/timezone";
 import { NextRequest, NextResponse } from "next/server";
@@ -12,10 +13,13 @@ function validDate(value: string) {
 }
 
 export async function GET(request: NextRequest) {
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
   const params = request.nextUrl.searchParams;
   const kind = params.get("kind") || "orders";
   if (kind !== "orders" && kind !== "inventory") return NextResponse.json({ error: "Invalid report type." }, { status: 400 });
   const query = new URLSearchParams({ per_page: "100", orderby: "id", order: "asc" });
+  query.set("_fields", kind === "orders" ? "id,number,status,currency,total,date_created,date_created_gmt,refunds.total" : "id,name,sku,stock_status,stock_quantity,manage_stock");
   let timezone = { timezone: "UTC", timezone_warning: null as string | null };
   if (kind === "orders") {
     const from = params.get("from") || "";

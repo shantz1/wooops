@@ -1,5 +1,6 @@
 "use client";
 
+import { ListPagination } from "@/components/list-pagination";
 import { useState } from "react";
 import { Search, Users } from "lucide-react";
 import { EmptyState, ErrorState, LoadingState, Notice, RetryButton } from "@/components/ui/feedback";
@@ -9,16 +10,17 @@ import type { WooCustomer } from "@/types/woocommerce";
 type CustomersResponse = { configured?: boolean; customers: WooCustomer[]; total: number; pages: number };
 
 export function CustomersTable() {
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
   const { data, error, loading, reload } = useRemote<CustomersResponse>(
-    `/api/woo/customers?${new URLSearchParams({ per_page: "50", search: debouncedSearch })}`, "Unable to load customers.");
+    `/api/woo/customers?${new URLSearchParams({ page: String(page), per_page: "20", search: debouncedSearch })}`, "Unable to load customers.");
   const items = data?.customers || [];
 
   return <div className="space-y-4">
     <div className="relative">
       <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-      <input type="search" aria-label="Search customers" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search customers..." className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm" />
+      <input type="search" aria-label="Search customers" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Search customers..." className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm" />
     </div>
     {error && data && <Notice tone="error" action={<RetryButton onRetry={reload} busy={loading} />}>Showing the last loaded customers. {error}</Notice>}
     <div className="overflow-hidden rounded-xl border bg-background shadow-sm">
@@ -34,6 +36,7 @@ export function CustomersTable() {
             <td className="px-5 py-4">{customer.total_spent ?? "—"}</td>
           </tr>)}</tbody>
         </table></div>}
+      {data && <ListPagination page={page} pages={data.pages} total={data.total} busy={loading} onPage={setPage} />}
     </div>
   </div>;
 }

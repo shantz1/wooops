@@ -50,13 +50,14 @@ function AddressCard({ title, address, empty, extra }: { title: string; address:
 }
 
 function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooOrder) => void }) {
+  const { canWrite } = usePanelPreferences();
   const [status, setStatus] = useState<WooOrderStatus>(order.status);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const custom = !editableStatuses.includes(order.status as never);
 
   async function save() {
-    if (saving || status === order.status) return;
+    if (!canWrite || saving || status === order.status) return;
     setSaving(true);
     setResult(null);
     try {
@@ -75,11 +76,11 @@ function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooO
     <section aria-labelledby="status-heading" className={card}>
       <h2 id="status-heading" className="font-semibold">Order status</h2>
       <label htmlFor="order-status" className="sr-only">New status</label>
-      <select id="order-status" value={status} onChange={event => setStatus(event.target.value)} className="mt-4 h-10 w-full rounded-lg border bg-background px-3 text-sm capitalize">
+      <select disabled={!canWrite} id="order-status" value={status} onChange={event => setStatus(event.target.value)} className="mt-4 h-10 w-full rounded-lg border bg-background px-3 text-sm capitalize">
         {custom && <option value={order.status} disabled>{statusLabel(order.status)} (custom — current)</option>}
         {editableStatuses.map(value => <option key={value} value={value}>{statusLabel(value)}</option>)}
       </select>
-      <button type="button" disabled={saving || status === order.status} onClick={save}
+      <button type="button" disabled={!canWrite || saving || status === order.status} onClick={save}
         className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
         {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}Save status
       </button>

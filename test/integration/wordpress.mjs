@@ -14,11 +14,12 @@ test("WordPress plugin catalog, reports and access", { skip: !base }, async () =
     const url = base + path.replace("?", base.includes("?") ? "&" : "?");
     const response = await fetch(url, { method, headers: { Authorization: `Basic ${Buffer.from(auth).toString("base64")}`, "Content-Type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30_000) });
+    assert.match(response.headers.get("cache-control") || "", /no-store/, path);
     const data = await response.json();
     calls.push(`${method} ${path}: ${response.status}`);
     return { status: response.status, data };
   }
-  for (const path of ["settings", "woo/connection", "woo/products?per_page=2", "woo/customers?per_page=2", "woo/orders?per_page=2", "reports?kind=inventory"]) {
+  for (const path of ["timezone", "settings", "woo/connection", "woo/products?per_page=2", "woo/customers?per_page=2", "woo/orders?per_page=2", "reports?kind=inventory"]) {
     const result = await api(path);
     assert.equal(result.status, 200, path);
     assert.equal((await api(path, "GET", undefined, "sub")).status, 403, `Subscriber: ${path}`);
@@ -47,6 +48,13 @@ test("WordPress plugin catalog, reports and access", { skip: !base }, async () =
   const inventory = await api("reports?kind=inventory");
   assert.ok(inventory.data.products.some(product => product.id === id && product.stock_quantity === 8));
   assert.ok(inventory.data.loaded <= 500);
+  const unmanaged = await api("woo/products", "POST", { ...details, name: "Unmanaged review draft", manage_stock: false });
+  assert.equal(unmanaged.status, 201);
+  assert.equal((await api(`woo/products/${unmanaged.data.id}`, "PATCH", { stock_quantity: 3 })).status, 409);
+  assert.equal((await api(`woo/products/${unmanaged.data.id}`)).data.manage_stock, false);
+  const enabled = await api(`woo/products/${unmanaged.data.id}`, "PATCH", { stock_quantity: 3, enable_stock_management: true });
+  assert.equal(enabled.data.manage_stock, true);
+  assert.equal(enabled.data.stock_quantity, 3);
   const anon = await fetch(base + "settings");
   assert.equal(anon.status, 401);
   console.log(`${calls.length + 1} WordPress requests verified; draft product ${id} is disposable test data.`);

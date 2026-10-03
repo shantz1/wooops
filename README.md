@@ -1,105 +1,130 @@
 # WooOps
 
-A clean, self-hosted admin panel for your WooCommerce store. Manage daily operations without opening WordPress admin each time.
+A self-hosted operations panel for your WooCommerce store: orders, products, stock, customers, notes, shipment tracking and basic reports.
 
-**One store. No extra plugin or database. API keys stay on the server.**
+**One store. No extra database. API keys stay server-side.**
 
-## What you can do
+Prefer to stay inside WordPress? Use **KartoDesk for WooCommerce**, the plugin version, with the same screens and your existing WordPress login.
 
-- Search orders, update statuses individually or in bulk, and view items, photos, addresses, payments and refunds.
-- Add private notes or customer-facing notes, and save courier tracking with a tracking link.
-- Find registered customers, browse products, create simple products and update stock.
-- Generate order and inventory reports and export CSV.
-- Customize the panel name and light/dark theme in Settings.
+## Standalone setup
 
-## 1. Prepare WordPress
+You need an HTTPS WooCommerce store and **Node.js 22.18+**.
 
-You need a working WooCommerce store with HTTPS and **Node.js 22.18+** on the computer or server running WooOps.
+### 1. Prepare WordPress
 
-1. In WordPress, open **Settings > Permalinks**. Use a structure such as **Post name**, rather than **Plain**.
+1. Under **Settings > Permalinks**, choose a readable structure such as **Post name**.
 2. Open **WooCommerce > Settings > Advanced > REST API > Add key**.
-3. Name it `WooOps`, choose a user with store management access, and select **Read/Write** permissions.
-4. Generate the key and copy the **Consumer Key** and **Consumer Secret**. Keep both private.
-5. Under **Settings > General > Timezone**, choose your store timezone. For IST, select **Kolkata** (`Asia/Kolkata`). WooOps follows this setting; refresh the panel after changing it.
+3. Choose a store management user and **Read/Write** permissions for editing. Use **Read** for a browsing-only deployment.
+4. Copy the Consumer Key and Consumer Secret; keep them private.
+5. Under **Settings > General > Timezone**, choose your store timezone. For IST, select **Kolkata**. The panel follows this setting; metadata refreshes within about a minute.
 
-[Official API key setup guide](https://woocommerce.com/document/woocommerce-rest-api/)
+[Official API key guide](https://woocommerce.com/document/woocommerce-rest-api/)
 
-## 2. Connect WooOps
+### 2. Configure WooOps
 
 ```bash
 git clone https://github.com/shantz1/wooops.git
 cd wooops
 npm ci
 cp .env.example .env.local
+npm run setup:password
 ```
 
-On Windows PowerShell, use `Copy-Item .env.example .env.local` for the last command.
+On PowerShell, use `Copy-Item .env.example .env.local` instead of `cp`.
 
-Edit `.env.local`:
+Enter a password when prompted. Copy the generated hash into `.env.local`:
 
 ```dotenv
 WOOCOMMERCE_URL=https://your-store.com
 WOOCOMMERCE_CONSUMER_KEY=ck_your_key
 WOOCOMMERCE_CONSUMER_SECRET=cs_your_secret
-WOOOPS_ADMIN_PASSWORD=your_strong_password
+WOOOPS_ADMIN_PASSWORD_HASH=scrypt:131072:8:1:your_generated_salt:your_generated_hash
 WOOOPS_SESSION_SECRET=your_long_random_secret
+WOOOPS_PUBLIC_URL=https://ops.your-store.com
 ```
 
-Use the WordPress base URL, including its subdirectory if applicable. Do not add `/wp-json/wc/v3`. HTTP is allowed only for localhost development.
+Use the WordPress base URL, including its subdirectory if needed; do not add `/wp-json/wc/v3`.
 
-Generate a random session secret with:
+Generate a random session secret:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-**Set both login values before sharing the panel.** Login uses your WooOps password, independently of WordPress users. Without a password, anyone who can reach the panel can access it. Never commit `.env.local` or share your keys.
+For local development, set `WOOOPS_PUBLIC_URL=http://localhost:3000`. Keep secrets outside the public web directory, out of Git, and accessible only to the service account. Environment values are **not encrypted by the app**.
 
-## 3. Start the panel
+### 3. Run it
 
 ```bash
 npm run dev
 ```
 
-Open **http://localhost:3000**, sign in, and check the connection under **Settings**. You can then use Orders, Products, Customers and Reports.
+Open **http://localhost:3000**, sign in and check **Settings**.
 
-For production hosting:
+For production:
 
 ```bash
-npm ci
 npm run build
 npm start
 ```
 
-Configure the same environment values on your server, serve the panel over HTTPS, and keep the process running with your hosting service or process manager.
+Use an HTTPS reverse proxy, restrict direct access to the Node port and add per-client login throttling. Forward the public Host and overwrite `X-Forwarded-Proto`. Production refuses to open without a valid password hash, session secret and public origin.
 
-## Tracking and customer emails
+### Optional access controls
 
-Open an order to add a courier, tracking number and optional HTTPS link. No tracking plugin is needed. Select **Notify customer** when you want a customer-facing tracking note; it is off by default.
+- **Read-only staff:** generate a different password hash and set `WOOOPS_READONLY_PASSWORD_HASH`. That login can view customer data and export reports, but cannot change store records.
+- **Authenticator codes:** run `npm run setup:2fa -- admin` and follow the output. Configure a separate secret for a read-only login with `npm run setup:2fa -- readonly`.
+- Sessions expire after **12 hours**. Credential changes invalidate them.
+- This MVP runs with **one Node process**. Built-in login limits and authenticator replay protection are not shared across instances.
 
-Enable **Customer note** under **WooCommerce > Settings > Emails** and check that your store sends mail. WooOps confirms the store accepted a note, not that the email was delivered. Status changes may also trigger store emails.
+[Security and private vulnerability reporting](SECURITY.md) ? [Updating an existing installation](docs/security-update.md)
 
-If an email outcome is uncertain, check the order notes before sending again. Avoid editing the same order's tracking simultaneously: another person's change can be overwritten.
+## WordPress plugin: KartoDesk
 
-## Know the current limits
+1. Upload the packaged `kartodesk-for-woocommerce-0.1.1.zip` under **Plugins > Add New > Upload Plugin**.
+2. Activate it and open **KartoDesk** in the admin menu, or visit **/manage/**.
+3. Use an administrator or store manager account. No Node server, API keys or WooOps password are needed.
 
-- One store and one shared admin password; no staff roles or audit log yet.
-- Overview summarizes the latest five orders. Customers and products show up to 50 results per search; Orders has pagination.
-- Reports load up to 500 records and flag incomplete results. Order values are not profit or confirmed revenue; refunds relate to orders created in the selected period. Inventory reports exclude variation quantities.
-- Product creation supports simple products and an existing image URL. Saving a stock quantity enables stock management.
-- Tracking is specific to WooOps. Saved tracking details must be removed and re-added to change them. Test writes and emails on staging first.
+WordPress handles login, passwords and sessions. Existing WordPress 2FA/login protection applies; the plugin does not add its own login.
+
+Use readable permalinks. If `/manage/` returns 404 after updating, save **Settings > Permalinks** once. An existing page called `manage` takes priority. Deactivate the earlier StoreOps test plugin before activating KartoDesk.
+
+Build the installable ZIP from source:
+
+```bash
+npm run build:wp
+python wordpress/package.py
+```
+
+The ZIP is created under `wordpress/dist/`. It includes every local screen module with portable paths. Shared source is in `src/`; plugin source is in `wordpress/`.
+
+## Tracking and emails
+
+Open an order to save courier tracking and an optional HTTPS link. No tracking plugin is needed. Customer notification is off by default.
+
+Enable **Customer note** under **WooCommerce > Settings > Emails** and test the store's mail delivery. The panel confirms that the store accepted a note, not that an email was delivered. Status changes may trigger separate store emails.
+
+If a write times out, reload before retrying. Avoid editing the same order's tracking simultaneously; another editor's changes can be overwritten. Test writes and emails on staging first.
+
+## Current limits
+
+- One store; standalone logins are shared roles, without individual staff accounts or an audit log.
+- Overview summarizes the latest five orders. Orders, products and customers have pagination; customers exclude guest checkouts.
+- Reports read up to 500 records and flag incomplete results. Order value is not profit or confirmed revenue; inventory reports exclude variation quantities.
+- Product creation supports simple products. The plugin uses an existing Media Library image URL; standalone images must belong to the store origin.
+- Enabling stock management requires confirmation. Tracking edits require removing and re-adding the shipment.
 
 ## Troubleshooting
 
-| Problem | What to check |
+| Problem | Check |
 | --- | --- |
-| Connection fails | Base URL, HTTPS, API keys, Read/Write permission and the key owner's access. |
+| Connection fails | Store URL, HTTPS, API key scope and key owner's permissions. |
 | Store returns 404 | WordPress permalinks must not be Plain. |
-| Login fails | Set both login values and restart WooOps. |
-| Times show UTC | Check the WordPress timezone and the connection. Settings warns if WooOps cannot read it. |
-| Customer emails do not arrive | Customer note email settings and the store's mail delivery. |
-
-Restart WooOps after changing environment values.
+| Production returns 503 | Password hash, session secret and public origin; restart after changes. |
+| Write returns 403 | Read-only access or Origin/public URL mismatch. |
+| Login returns 429 | Wait for the retry delay; review proxy throttling. |
+| Times show UTC | WordPress timezone and Settings connection warning. |
+| Customer emails do not arrive | Customer note email settings and store mail delivery. |
 
 ## Developer checks
 
@@ -107,29 +132,11 @@ Restart WooOps after changing environment values.
 npm run lint
 npm test
 npm run build
+npm run build:wp
 npx tsc --noEmit
 npm run test:integration
 ```
 
-Integration tests use an isolated mock store, not your live store. Optional signed webhooks can be configured at `/api/woo/webhooks` using `WOOCOMMERCE_WEBHOOK_SECRET`; they currently log events only.
+Integration tests use an isolated mock store. Optional signed webhooks at `/api/woo/webhooks` use `WOOCOMMERCE_WEBHOOK_SECRET`; they invalidate timezone metadata and acknowledge the event without storing customer payloads.
 
-## WordPress plugin: KartoDesk for WooCommerce
-
-The same panel also ships as a WordPress plugin in `wordpress/kartodesk-for-woocommerce/`. It runs inside wp-admin under **KartoDesk**, full screen, with a **WordPress dashboard** button to return. No Node.js server, API keys, or WooOps password are needed: the plugin's PHP REST routes (`/wp-json/kartodesk/v1/`) call WooCommerce's REST API in-process as the signed-in user, and only users with `manage_woocommerce` can use it.
-
-The plugin includes Overview, Orders, Products, Customers, Inventory, Reports and Settings, including simple product creation, notes and shipment tracking. It has the same feature limits as the standalone panel. Tracking uses the same `wooops_shipments` order metadata, so the plugin and the standalone app can be used on one store.
-
-Build and package it:
-
-```bash
-npm run build:wp   # builds the plugin assets
-python wordpress/package.py   # creates the installable ZIP (requires Python 3)
-```
-
-Then zip the `wordpress/kartodesk-for-woocommerce` folder so the zip contains that folder at its root. Use a tool that writes forward-slash paths; Windows PowerShell 5.1's `Compress-Archive` does not, and such zips fail on Linux servers. The front-end source lives in `src/` (shared components) and `wordpress/app/` (hash router and small stand-ins for `next/link`, `next/navigation` and `next/image`).
-
-## License
-
-[MIT](LICENSE)
-
-The clean panel URL is `/manage/` (under the WordPress installation path). Use readable permalinks. After updating, save Settings > Permalinks once if the URL returns 404. An existing page named `manage` takes priority; use the wp-admin menu instead. When replacing the earlier StoreOps test plugin, deactivate it before activating KartoDesk.
+[MIT license](LICENSE) ? [Third-party notices](THIRD_PARTY_NOTICES.md)

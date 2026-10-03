@@ -1,5 +1,6 @@
 "use client";
 
+import { usePanelPreferences } from "@/components/panel-preferences";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -9,6 +10,7 @@ import { fetchJson } from "@/lib/fetch-json";
 
 export function CreateProductForm() {
   const router = useRouter();
+  const { canWrite } = usePanelPreferences();
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
   const [price, setPrice] = useState("");
@@ -22,6 +24,7 @@ export function CreateProductForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canWrite) return;
     setError("");
     if (!name.trim() || !/^\d+(?:\.\d{1,2})?$/.test(price) ||
         (manageStock && (!/^\d+$/.test(stock) || !Number.isSafeInteger(Number(stock))))) {
@@ -52,6 +55,8 @@ export function CreateProductForm() {
       setSaving(false);
     }
   }
+
+  if (!canWrite) return <p role="status">Product creation requires administrator access.</p>;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

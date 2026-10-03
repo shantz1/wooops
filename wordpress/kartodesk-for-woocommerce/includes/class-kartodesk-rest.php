@@ -53,11 +53,21 @@ class KartoDesk_Rest {
 	 */
 	public static function init() {
 		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
+		add_filter( 'rest_post_dispatch', array( __CLASS__, 'private_response' ), 10, 3 );
+	}
+
+	/** Never allow a shared cache to retain customer data or permission errors. */
+	public static function private_response( $response, $server, $request ) {
+		if ( 0 === strpos( $request->get_route(), '/' . self::REST_NAMESPACE . '/' ) ) {
+			$response->header( 'Cache-Control', 'private, no-store, max-age=0' );
+			$response->header( 'X-Robots-Tag', 'noindex, nofollow' );
+			$response->header( 'X-Content-Type-Options', 'nosniff' );
+		}
+		return $response;
 	}
 
 	/**
-	 * Every route requires a user who can manage WooCommerce. Cookie requests also need a valid REST nonce,
-	 * which WordPress core checks before this callback.
+	 * Every route requires a user who can manage WooCommerce. WordPress also checks REST nonces for cookies.
 	 *
 	 * @return bool
 	 */
@@ -71,6 +81,7 @@ class KartoDesk_Rest {
 	public static function register_routes() {
 		$order = '/woo/orders/(?P<id>[1-9]\d*)';
 		$routes = array(
+			'/timezone'           => array( 'GET' => 'timezone' ),
 			'/settings'           => array( 'GET' => 'settings' ),
 			'/reports'            => array( 'GET' => 'reports' ),
 			'/woo/connection'     => array( 'GET' => 'connection' ),
@@ -105,6 +116,9 @@ class KartoDesk_Rest {
 	private static function handler( $callback ) {
 		return static function ( WP_REST_Request $request ) use ( $callback ) {
 			try {
+				if ( strlen( $request->get_body() ) > 65536 ) {
+					return self::error( esc_html__( 'Request body is too large.', 'kartodesk-for-woocommerce' ), 413 );
+				}
 				return call_user_func( array( __CLASS__, $callback ), $request );
 			} catch ( KartoDesk_Error $error ) {
 				return self::error( $error->getMessage(), $error->status );
@@ -184,6 +198,14 @@ class KartoDesk_Rest {
 	 *
 	 * @return WP_REST_Response
 	 */
+	/** Lightweight workspace configuration; no catalog or system-status query. */
+	public static function timezone() {
+		return new WP_REST_Response( array(
+			'timezone' => wp_timezone_string(), 'timezone_warning' => null,
+			'access' => array( 'role' => 'admin' ),
+		) );
+	}
+
 	public static function settings() {
 		$timezone = wp_timezone_string();
 		if ( '+00:00' === $timezone ) {
@@ -226,6 +248,7 @@ class KartoDesk_Rest {
 			'per_page' => self::page_param( $request->get_param( 'per_page' ), 20, 100 ),
 			'orderby'  => 'date',
 			'order'    => 'desc',
+			'_fields' => 'id,number,status,currency,total,date_created,date_created_gmt,customer_id,billing.first_name,billing.last_name,billing.email,payment_method_title',
 		);
 		$search = mb_substr( trim( sanitize_text_field( (string) $request->get_param( 'search' ) ) ), 0, 200 );
 		if ( '' !== $search ) {

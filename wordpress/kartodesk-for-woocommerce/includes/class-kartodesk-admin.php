@@ -33,6 +33,7 @@ class KartoDesk_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
 		add_action( 'init', array( __CLASS__, 'redirect_legacy_page' ), 1 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
+		add_filter( 'script_loader_tag', array( __CLASS__, 'module_script' ), 10, 2 );
 		add_filter( 'admin_body_class', array( __CLASS__, 'body_class' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( KARTODESK_FILE ), array( __CLASS__, 'action_links' ) );
 		add_action( 'init', array( __CLASS__, 'register_clean_route' ) );
@@ -78,6 +79,10 @@ class KartoDesk_Admin {
 			return;
 		}
 		nocache_headers();
+		header( 'X-Frame-Options: DENY' );
+		header( "Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'" );
+		header( 'X-Content-Type-Options: nosniff' );
+		header( 'Referrer-Policy: no-referrer' );
 		if ( ! is_user_logged_in() ) {
 			wp_safe_redirect( wp_login_url( home_url( '/manage/' ) ) );
 			exit;
@@ -152,6 +157,15 @@ class KartoDesk_Admin {
 			'features'  => self::FEATURES,
 		);
 		wp_add_inline_script( 'storeops-app', 'window.kartoDeskConfig = ' . wp_json_encode( $config ) . ';', 'before' );
+	}
+
+	/** The entry uses local ES modules so each screen can load its own chunk. */
+	public static function module_script( $tag, $handle ) {
+		if ( 'storeops-app' !== $handle ) {
+			return $tag;
+		}
+		$tag = preg_replace( '/\s+type=([\x27\x22]).*?\1/', '', $tag );
+		return str_replace( '<script ', '<script type="module" ', $tag );
 	}
 
 	/**

@@ -1,3 +1,5 @@
+import { authorizeRequest } from "@/lib/request-guard";
+import { readRequestJson } from "@/lib/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { isWooCommerceConfigured, wooFetch, wooFetchWithHeaders } from "@/lib/woocommerce/client";
 import { wooErrorResponse } from "@/lib/woocommerce/errors";
@@ -17,6 +19,8 @@ function validStoreImageUrl(value: string) {
 }
 
 export async function GET(request: NextRequest) {
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
   if (!isWooCommerceConfigured()) return NextResponse.json({ configured: false, products: [], total: 0, pages: 0 });
   const params = request.nextUrl.searchParams;
   const query = new URLSearchParams({
@@ -24,6 +28,7 @@ export async function GET(request: NextRequest) {
     per_page: String(pageParam(params.get("per_page"), 20, 100)),
     orderby: "date",
     order: "desc",
+    _fields: "id,name,sku,price,regular_price,manage_stock,stock_quantity,stock_status,images",
   });
   const search = searchParam(params.get("search"));
   if (search) query.set("search", search);
@@ -36,7 +41,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
+  const body = await readRequestJson(request).catch(() => null);
   const valid = body && typeof body.name === "string" && body.name.trim().length > 0 && body.name.length <= 200 &&
     typeof body.regular_price === "string" && /^\d+(?:\.\d{1,2})?$/.test(body.regular_price) &&
     (body.sku === undefined || (typeof body.sku === "string" && body.sku.length <= 100)) &&

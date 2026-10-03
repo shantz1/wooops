@@ -11,7 +11,7 @@ trait KartoDesk_Catalog {
 
 	/** Connection check exercises the same controller used by the products screen. */
 	public static function connection() {
-		self::wc( 'GET', 'products', array( 'per_page' => 1 ) );
+		self::wc( 'GET', 'products', array( 'per_page' => 1, '_fields' => 'id' ) );
 		return new WP_REST_Response( array( 'configured' => true ) );
 	}
 
@@ -31,6 +31,7 @@ trait KartoDesk_Catalog {
 			'page' => self::page_param( $request->get_param( 'page' ), 1 ),
 			'per_page' => self::page_param( $request->get_param( 'per_page' ), 20, 100 ),
 			'orderby' => $orderby, 'order' => 'desc',
+			'_fields' => 'products' === $resource ? 'id,name,sku,price,regular_price,manage_stock,stock_quantity,stock_status,images' : 'id,first_name,last_name,email,billing.phone,orders_count,total_spent',
 		);
 		$search = mb_substr( trim( sanitize_text_field( (string) $request->get_param( 'search' ) ) ), 0, 200 );
 		if ( '' !== $search ) {
@@ -53,10 +54,19 @@ trait KartoDesk_Catalog {
 	/** Update a non-negative integer stock quantity, matching the standalone behavior. */
 	public static function update_stock( WP_REST_Request $request ) {
 		$quantity = $request->get_param( 'stock_quantity' );
-		if ( ! is_int( $quantity ) || $quantity < 0 || $quantity > 9007199254740991 ) {
+		$enable = $request->get_param( 'enable_stock_management' );
+		if ( ! is_int( $quantity ) || $quantity < 0 || $quantity > 9007199254740991 || ( null !== $enable && ! is_bool( $enable ) ) ) {
 			return self::error( esc_html__( 'Provide a non-negative whole stock quantity.', 'kartodesk-for-woocommerce' ), 400 );
 		}
-		list( $product ) = self::wc( 'PUT', 'products/' . (int) $request['id'], array(), array( 'stock_quantity' => $quantity, 'manage_stock' => true ) );
+		list( $current ) = self::wc( 'GET', 'products/' . (int) $request['id'] );
+		if ( empty( $current['manage_stock'] ) && true !== $enable ) {
+			return self::error( esc_html__( 'Explicitly confirm enabling stock management for this product first.', 'kartodesk-for-woocommerce' ), 409 );
+		}
+		$payload = array( 'stock_quantity' => $quantity );
+		if ( empty( $current['manage_stock'] ) ) {
+			$payload['manage_stock'] = true;
+		}
+		list( $product ) = self::wc( 'PUT', 'products/' . (int) $request['id'], array(), $payload );
 		return new WP_REST_Response( $product );
 	}
 
@@ -138,6 +148,7 @@ trait KartoDesk_Catalog {
 			}
 			$filters['stock'] = $stock;
 		}
+		$query['_fields'] = 'orders' === $kind ? 'id,number,status,currency,total,date_created,date_created_gmt,refunds.total' : 'id,name,sku,stock_status,stock_quantity,manage_stock';
 		$resource = 'orders' === $kind ? 'orders' : 'products';
 		$started = microtime( true );
 		$rows = array();

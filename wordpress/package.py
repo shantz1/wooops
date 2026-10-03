@@ -1,6 +1,7 @@
 """Package the built plugin with portable paths and no repository/private files."""
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
+import re
 
 root = Path(__file__).resolve().parent
 plugin = root / "kartodesk-for-woocommerce"
@@ -8,8 +9,11 @@ required = ["kartodesk-for-woocommerce.php", "readme.txt", "license.txt", "build
 for name in required:
     if not (plugin / name).is_file():
         raise SystemExit(f"Missing {name}; run npm run build:wp first.")
-files = [plugin / name for name in required] + sorted((plugin / "includes").glob("*.php"))
-archive = root / "dist" / "kartodesk-for-woocommerce-0.1.0.zip"
+files = [plugin / name for name in required if not name.startswith("build/")] + sorted((plugin / "includes").glob("*.php"))
+# Include every generated module chunk, not only the entry script.
+files += sorted(path for path in (plugin / "build").rglob("*") if path.is_file() and path.suffix in {".js", ".mjs", ".css", ".svg"})
+version = re.search(r"Version:\s*([0-9.]+)", (plugin / "kartodesk-for-woocommerce.php").read_text(encoding="utf-8")).group(1)
+archive = root / "dist" / f"kartodesk-for-woocommerce-{version}.zip"
 archive.parent.mkdir(exist_ok=True)
 with ZipFile(archive, "w", ZIP_DEFLATED) as zip_file:
     for path in files:

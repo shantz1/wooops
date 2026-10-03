@@ -1,3 +1,5 @@
+import { authorizeRequest } from "@/lib/request-guard";
+import { readRequestJson } from "@/lib/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { wooFetch } from "@/lib/woocommerce/client";
 import { wooErrorResponse } from "@/lib/woocommerce/errors";
@@ -8,6 +10,8 @@ type Context = { params: Promise<{ id: string }> };
 const noteTypes = ["any", "customer", "internal"];
 
 export async function GET(request: NextRequest, { params }: Context) {
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
   const { id } = await params;
   const type = request.nextUrl.searchParams.get("type") || "any";
   if (!isId(id) || !noteTypes.includes(type)) return NextResponse.json({ error: "Invalid order ID or note type." }, { status: 400 });
@@ -16,8 +20,10 @@ export async function GET(request: NextRequest, { params }: Context) {
 }
 
 export async function POST(request: NextRequest, { params }: Context) {
+  const denied = authorizeRequest(request);
+  if (denied) return denied;
   const { id } = await params;
-  const body = await request.json().catch(() => null);
+  const body = await readRequestJson(request).catch(() => null);
   if (!isId(id) || typeof body?.note !== "string" || !body.note.trim() || body.note.length > 5000 ||
       (body.customer_note !== undefined && typeof body.customer_note !== "boolean")) {
     return NextResponse.json({ error: "Provide a valid order ID and a note of up to 5,000 characters." }, { status: 400 });

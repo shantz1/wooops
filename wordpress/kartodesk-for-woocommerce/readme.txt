@@ -4,7 +4,7 @@ Tags: woocommerce, orders, shipment tracking, order notes, fulfilment
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -65,15 +65,21 @@ Yes. It works through WooCommerce's REST controllers and declares HPOS compatibi
 
 = What else can I manage? =
 
-Products, simple product creation, stock, registered customers, order and inventory reports with CSV, and panel settings. Product and customer lists show up to 50 results per search. Reports load up to 500 records and flag incomplete results; inventory reports exclude variation stock. Saving a stock quantity enables stock management.
+Products, simple product creation, stock, registered customers, order and inventory reports with CSV, and panel settings. Product and customer lists have pagination. Reports load up to 500 records and flag incomplete results; inventory reports exclude variation stock. Enabling stock management requires explicit confirmation.
 
 == Privacy ==
 
-KartoDesk does not track users, send data to third parties or load remote assets. It displays customer details that WooCommerce already stores, only to users who can manage WooCommerce.
+KartoDesk does not track users or send telemetry. Its own scripts and styles load locally; product images can use the store's image or CDN URLs. It displays customer details that WooCommerce already stores, only to users who can manage WooCommerce.
 
 == Changelog ==
 
+= 0.1.1 =
+* Load screens on demand and share concurrent reads.
+* Reduce list/report payloads; paginate products and customers.
+* Prevent caching of private API responses and bound write payloads.
+* Require confirmation before enabling product stock management.
+
 = 0.1.0 =
-* First release: overview, orders list, order workspace, order notes and shipment tracking.
+* Initial release with overview, orders, products, customers, inventory, reports, settings, notes and tracking.
 
 The clean panel URL is `/manage/` (under the WordPress installation path). Use readable permalinks. After updating, save Settings > Permalinks once if the URL returns 404. An existing page named `manage` takes priority; use the wp-admin menu instead. When replacing the earlier StoreOps test plugin, deactivate it before activating KartoDesk.
