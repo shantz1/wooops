@@ -14,11 +14,17 @@
 @source "../../src";
 @source "./";
 
-/* The panel takes over the viewport like a full-screen app; "Back to WordPress" returns to wp-admin. */
+/* Embed the workspace in its own admin page; preserve WordPress navigation and notices. */
+body.storeops-admin #storeops-root {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  min-height: calc(100vh - 100px);
+  overflow: hidden;
+  transform: translateZ(0); /* Contain the panel's fixed sidebar/mobile drawer. */
+}
+body.storeops-admin #storeops-root > div { min-height: calc(100vh - 100px); }
 body.storeops-app { overflow: hidden; }
-/* Remove covered admin controls from keyboard and screen-reader navigation too. */
-body.storeops-app :is(#adminmenumain, #wpadminbar, #wpfooter, #screen-meta, #screen-meta-links) { display: none; }
-body.storeops-app #wpbody-content > :not(#storeops-root) { display: none; }
 
 #storeops-root {
   --font-geist-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
@@ -92,6 +98,8 @@ body.storeops-app #wpbody-content > :not(#storeops-root) { display: none; }
 @media print {
   html.wp-toolbar { padding-top: 0 !important; }
   body.storeops-app { overflow: visible !important; background: #fff !important; }
-  body.storeops-app :is(#wpcontent, #wpbody, #wpbody-content) { margin: 0 !important; padding: 0 !important; float: none !important; }
-  #storeops-root { position: static !important; inset: auto !important; overflow: visible !important; background: #fff !important; }
+  body.storeops-admin :is(#adminmenumain, #wpadminbar, #wpfooter, #screen-meta, #screen-meta-links, .notice, .update-nag) { display: none !important; }
+  body.storeops-admin #wpbody-content > :not(#storeops-root) { display: none !important; }
+  body.storeops-admin :is(#wpcontent, #wpbody, #wpbody-content) { margin: 0 !important; padding: 0 !important; float: none !important; }
+  #storeops-root { transform: none !important; position: static !important; inset: auto !important; overflow: visible !important; background: #fff !important; }
 }

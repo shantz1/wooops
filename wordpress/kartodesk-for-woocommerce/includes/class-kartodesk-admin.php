@@ -119,7 +119,7 @@ class KartoDesk_Admin {
 	}
 
 	/**
-	 * Prints the mount point. The panel renders full screen over wp-admin.
+	 * Prints the mount point. The workspace stays inside its own wp-admin page.
 	 */
 	public static function render() {
 		echo '<div id="storeops-root" class="storeops-root"><p style="padding:2rem">' . esc_html__( 'Loading KartoDesk…', 'kartodesk-for-woocommerce' ) . '</p><noscript><p>' . esc_html__( 'KartoDesk needs JavaScript enabled.', 'kartodesk-for-woocommerce' ) . '</p></noscript></div>';
@@ -169,7 +169,7 @@ class KartoDesk_Admin {
 	}
 
 	/**
-	 * Marks the KartoDesk page so its stylesheet can stop wp-admin from scrolling behind the panel.
+	 * Marks only the KartoDesk page for scoped embedded workspace styles.
 	 *
 	 * @param string $classes Space-separated body classes.
 	 * @return string
@@ -177,7 +177,7 @@ class KartoDesk_Admin {
 	public static function body_class( $classes ) {
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 		if ( $screen && $screen->id === self::$hook ) {
-			$classes .= ' storeops-app';
+			$classes .= ' storeops-admin';
 		}
 		return $classes;
 	}
@@ -197,7 +197,11 @@ class KartoDesk_Admin {
 	 * Shown when WooCommerce is not active.
 	 */
 	public static function missing_woocommerce_notice() {
-		echo '<div class="notice notice-error"><p>' . esc_html__( 'KartoDesk for WooCommerce requires WooCommerce to be installed and active.', 'kartodesk-for-woocommerce' ) . '</p></div>';
+		$screen = get_current_screen();
+		if ( ! $screen || 'plugins' !== $screen->id ) {
+			return;
+		}
+		echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'KartoDesk for WooCommerce requires WooCommerce to be installed and active.', 'kartodesk-for-woocommerce' ) . '</p></div>';
 	}
 
 	/**

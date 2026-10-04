@@ -81,7 +81,7 @@ Use an HTTPS reverse proxy, restrict direct access to the Node port and add per-
 
 ## WordPress plugin: KartoDesk
 
-1. Upload the packaged `kartodesk-for-woocommerce-0.1.2.zip` under **Plugins > Add New > Upload Plugin**.
+1. Upload the packaged `kartodesk-for-woocommerce-0.1.3.zip` under **Plugins > Add New > Upload Plugin**.
 2. Activate it and open **KartoDesk** in the admin menu, or visit **/manage/**.
 3. Use an administrator or store manager account. No Node server, API keys or WooOps password are needed.
 

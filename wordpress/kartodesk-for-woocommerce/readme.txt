@@ -4,7 +4,7 @@ Tags: woocommerce, orders, shipment tracking, order notes, fulfilment
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.2
+Stable tag: 0.1.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -72,6 +72,11 @@ Products, simple product creation, stock, registered customers, order and invent
 KartoDesk does not track users or send telemetry. Its own scripts and styles load locally; product images can use the store's image or CDN URLs. It displays customer details that WooCommerce already stores, only to users who can manage WooCommerce.
 
 == Changelog ==
+
+= 0.1.3 =
+* Keep WordPress navigation and other plugins' notices visible on the KartoDesk admin page.
+* Scope the WooCommerce dependency notice to the Plugins screen.
+* Keep the separate /manage workspace available.
 
 = 0.1.2 =
 * Support registered custom order statuses in filters, status updates and reports.
