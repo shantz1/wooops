@@ -5,18 +5,7 @@ import { isWooCommerceConfigured, wooFetch, wooFetchWithHeaders } from "@/lib/wo
 import { wooErrorResponse } from "@/lib/woocommerce/errors";
 import { pageParam, searchParam } from "@/lib/woocommerce/validation";
 import type { WooProduct } from "@/types/woocommerce";
-
-function validStoreImageUrl(value: string) {
-  if (!value) return true;
-  if (value.length > 2048 || !process.env.WOOCOMMERCE_URL) return false;
-  try {
-    const image = new URL(value);
-    const store = new URL(process.env.WOOCOMMERCE_URL);
-    const local = store.hostname === "localhost" || store.hostname === "127.0.0.1";
-    return image.origin === store.origin && (image.protocol === "https:" || local && image.protocol === "http:") &&
-      !image.username && !image.password;
-  } catch { return false; }
-}
+import { validStoreImageUrl } from "@/lib/product-details";
 
 export async function GET(request: NextRequest) {
   const denied = authorizeRequest(request);
@@ -28,10 +17,20 @@ export async function GET(request: NextRequest) {
     per_page: String(pageParam(params.get("per_page"), 20, 100)),
     orderby: "date",
     order: "desc",
-    _fields: "id,name,sku,price,regular_price,manage_stock,stock_quantity,stock_status,images",
+    _fields: "id,name,type,status,sku,price,regular_price,manage_stock,stock_quantity,stock_status,images,low_stock_amount",
   });
   const search = searchParam(params.get("search"));
   if (search) query.set("search", search);
+  if (params.has("stock_status")) {
+    const stock = params.get("stock_status")!;
+    if (!["instock", "outofstock", "onbackorder"].includes(stock)) return NextResponse.json({ error: "Invalid stock filter." }, { status: 400 });
+    query.set("stock_status", stock);
+  }
+  if (params.has("type")) {
+    const type = params.get("type")!;
+    if (!["simple", "variable", "grouped", "external"].includes(type)) return NextResponse.json({ error: "Invalid product type." }, { status: 400 });
+    query.set("type", type);
+  }
   try {
     const result = await wooFetchWithHeaders<WooProduct[]>(`products?${query}`);
     return NextResponse.json({ configured: true, products: result.data, total: result.total, pages: result.pages });
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
     typeof body.regular_price === "string" && /^\d+(?:\.\d{1,2})?$/.test(body.regular_price) &&
     (body.sku === undefined || (typeof body.sku === "string" && body.sku.length <= 100)) &&
     (body.description === undefined || (typeof body.description === "string" && body.description.length <= 10000)) &&
-    (body.image_url === undefined || (typeof body.image_url === "string" && validStoreImageUrl(body.image_url.trim()))) &&
+    (body.image_url === undefined || (typeof body.image_url === "string" && validStoreImageUrl(body.image_url.trim(), process.env.WOOCOMMERCE_URL))) &&
     (body.status === "draft" || body.status === "publish") && typeof body.manage_stock === "boolean" &&
     (!body.manage_stock || (Number.isSafeInteger(body.stock_quantity) && body.stock_quantity >= 0));
   if (!valid) return NextResponse.json({ error: "Invalid simple product details." }, { status: 400 });

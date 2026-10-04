@@ -27,5 +27,5 @@ export interface WooOrder {
   refunds?: Array<{ id: number; reason: string; total: string }>;
 }
 export interface WooOrderNote { id: number; author: string; date_created: string; date_created_gmt?: string; note: string; customer_note: boolean; }
-export interface WooProduct { id:number; name:string; status:string; sku:string; price:string; regular_price:string; sale_price:string; stock_quantity:number|null; stock_status:string; manage_stock:boolean; images:Array<{id:number;src:string;alt:string}>; }
+export interface WooProduct { id:number; name:string; type?:string; status:string; sku:string; price:string; regular_price:string; sale_price:string; stock_quantity:number|null; stock_status:string; manage_stock:boolean; low_stock_amount?:number|null; images:Array<{id:number;src:string;alt:string}>; }
 export interface WooCustomer { id:number; first_name:string; last_name:string; email:string; role:string; username:string; date_created:string; orders_count?:number; total_spent?:string; billing?:{phone?:string;city?:string;state?:string;country?:string}; }

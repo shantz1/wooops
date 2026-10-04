@@ -89,6 +89,7 @@ class KartoDesk_Rest {
 			'/reports'            => array( 'GET' => 'reports' ),
 			'/woo/connection'     => array( 'GET' => 'connection' ),
 			'/woo/products'       => array( 'GET' => 'list_products', 'POST' => 'create_product' ),
+			'/woo/catalog'        => array( 'GET' => 'catalog', 'POST' => 'catalog', 'PATCH' => 'catalog' ),
 			'/woo/products/(?P<id>[1-9]\d*)' => array( 'GET' => 'get_product', 'PATCH' => 'update_stock' ),
 			'/woo/customers'      => array( 'GET' => 'list_customers' ),
 			'/woo/orders'         => array( 'GET' => 'list_orders' ),

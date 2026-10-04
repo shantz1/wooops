@@ -19,7 +19,7 @@ test("shipment and note routes against an isolated mock store", { timeout: 60_00
   let reportCount = 2;
   let listDelay = 0;
   let initialLoginCode = "";
-  const product = { id: 1, name: "Mock product", manage_stock: false, stock_quantity: null };
+  const product = { id: 1, type: "simple", date_modified_gmt: "2026-10-04T10:00:00", name: "Mock product", manage_stock: false, stock_quantity: null };
   const store = createServer(async (request, response) => {
     let raw = "";
     for await (const chunk of request) raw += chunk;
@@ -264,6 +264,8 @@ test("shipment and note routes against an isolated mock store", { timeout: 60_00
     assert.ok(!JSON.stringify(settings.body).includes("cs_mock"));
   });
   await t.test("stock updates cannot silently enable stock management", async () => {
+    assert.equal((await api("/api/woo/products/1", "PATCH", { details: { manage_stock: true }, modified: product.date_modified_gmt })).status, 400);
+    assert.equal(product.manage_stock, false);
     const before = requests.length;
     assert.equal((await api("/api/woo/products/1", "PATCH", { stock_quantity: 7 })).status, 409);
     assert.equal(product.manage_stock, false);
@@ -274,6 +276,19 @@ test("shipment and note routes against an isolated mock store", { timeout: 60_00
     const updated = await api("/api/woo/products/1", "PATCH", { stock_quantity: 8 });
     assert.equal(updated.body.stock_quantity, 8);
     assert.deepEqual(requests.at(-1).body, { stock_quantity: 8 });
+  });
+  await t.test("product editing validates fields and detects stale edits without touching stock", async () => {
+    const before = requests.length;
+    assert.equal((await api("/api/woo/products/1", "PATCH", { details: { meta_data: [] }, modified: product.date_modified_gmt })).status, 400);
+    assert.equal((await api("/api/woo/catalog?resource=orders")).status, 400);
+    assert.equal(requests.length, before);
+    assert.equal((await api("/api/woo/products/1", "PATCH", { details: { description: "new" }, modified: "old" })).status, 409);
+    assert.equal(requests.at(-1).method, "GET");
+    const result = await api("/api/woo/products/1", "PATCH", { details: { description: "<p>New</p>", images: [{ id: 4 }, { id: 5 }] }, modified: product.date_modified_gmt });
+    assert.equal(result.status, 200);
+    assert.deepEqual(requests.at(-1).body, { description: "<p>New</p>", images: [{ id: 4 }, { id: 5 }] });
+    assert.equal(product.stock_quantity, 8);
+    assert.equal((await api("/api/woo/products/1", "PATCH", { details: { images: [{ src: "https://outside.example/img.jpg" }] }, modified: product.date_modified_gmt })).status, 400);
   });
   await t.test("concurrent connection reads share one store request and list fields are bounded", async () => {
     listDelay = 100;

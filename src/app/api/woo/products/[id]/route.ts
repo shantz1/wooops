@@ -5,6 +5,7 @@ import { wooFetch } from "@/lib/woocommerce/client";
 import { wooErrorResponse } from "@/lib/woocommerce/errors";
 import { isId } from "@/lib/woocommerce/validation";
 import type { WooProduct } from "@/types/woocommerce";
+import { validProductDetails, type ProductDetails } from "@/lib/product-details";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -22,6 +23,20 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if (denied) return denied;
   const { id } = await params;
   const body = await readRequestJson(request).catch(() => null);
+  if (body?.details !== undefined) {
+    if (!isId(id) || !validProductDetails(body.details, process.env.WOOCOMMERCE_URL) ||
+        typeof body.modified !== "string" || body.modified.length > 40 || Object.keys(body).some(key => !["details", "modified"].includes(key))) {
+      return NextResponse.json({ error: "Invalid product details." }, { status: 400 });
+    }
+    try {
+      const current = await wooFetch<ProductDetails>(`products/${id}`);
+      if (current.date_modified_gmt !== body.modified) return NextResponse.json({ error: "This product changed since you opened it. Reload before saving." }, { status: 409 });
+      if (current.type === "variable" && ("regular_price" in body.details || "sale_price" in body.details)) return NextResponse.json({ error: "Edit prices on each variation." }, { status: 400 });
+      if (body.details.manage_stock === true && !current.manage_stock && !Number.isSafeInteger(body.details.stock_quantity)) return NextResponse.json({ error: "Provide a starting quantity when enabling stock management." }, { status: 400 });
+      if (["upsell_ids", "cross_sell_ids", "grouped_products"].some(key => body.details[key]?.includes(Number(id)))) return NextResponse.json({ error: "A product cannot link to itself." }, { status: 400 });
+      return NextResponse.json(await wooFetch(`products/${id}`, { method: "PUT", body: JSON.stringify(body.details) }));
+    } catch (error) { return wooErrorResponse(error, "Unable to save product."); }
+  }
   if (!isId(id) || !Number.isSafeInteger(body?.stock_quantity) || body.stock_quantity < 0 ||
       body.enable_stock_management !== undefined && typeof body.enable_stock_management !== "boolean") {
     return NextResponse.json({ error: "Provide a valid product ID and non-negative stock quantity." }, { status: 400 });

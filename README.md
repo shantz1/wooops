@@ -6,6 +6,8 @@ A self-hosted operations panel for your WooCommerce store: orders, products, sto
 
 Prefer to stay inside WordPress? Use **KartoDesk for WooCommerce**, the plugin version, with the same screens and your existing WordPress login.
 
+Under **Products**, search and open an item to edit its descriptions, prices, categories, image gallery, stock and shipping details. Images use existing store Media Library URLs. Categories, attributes, variations and reviews have their own sections. **Inventory** is for quantity updates and availability checks.
+
 ## Standalone setup
 
 You need an HTTPS WooCommerce store and **Node.js 22.18+**.
@@ -81,7 +83,7 @@ Use an HTTPS reverse proxy, restrict direct access to the Node port and add per-
 
 ## WordPress plugin: KartoDesk
 
-1. Upload the packaged `kartodesk-for-woocommerce-0.1.4.zip` under **Plugins > Add New > Upload Plugin**.
+1. Upload the packaged `kartodesk-for-woocommerce-0.1.5.zip` under **Plugins > Add New > Upload Plugin**.
 2. Activate it and open **KartoDesk** in the admin menu. It runs inside its own wp-admin page; the WordPress menu, admin bar and notices stay visible.
 3. Use an administrator or store manager account. No Node server, API keys or WooOps password are needed.
 

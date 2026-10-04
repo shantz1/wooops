@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Fragment } from "react";
 import { BarChart3, Boxes, LayoutDashboard, Loader2, LogOut, Menu, Package, Settings, ShoppingCart, Users, X } from "lucide-react";
 import { usePanelPreferences } from "@/components/panel-preferences";
 import { isAvailable as available, wordpressRuntime } from "@/lib/runtime";
@@ -37,7 +38,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
   return (
     <>
       <p className="px-3 pb-2 pt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Workspace</p>
-      {navigation.filter(item => available(item.href)).map(item => link(item.href, item.label, item.icon))}
+      {navigation.filter(item => available(item.href)).map(item => <Fragment key={item.href}>{link(item.href, item.label, item.icon)}{item.href === "/products" && pathname.startsWith("/products") && <div className="ml-5 space-y-1 border-l pl-2">{[["/products", "Catalogue"], ["/products/categories", "Categories"], ["/products/attributes", "Attributes"], ["/products/variations", "Variations"], ["/products/reviews", "Reviews"]].map(([href, label]) => <Link key={href} href={href} onClick={onNavigate} aria-current={pathname === href ? "page" : undefined} className={"block rounded-lg px-3 py-2 text-xs " + focusRing + (pathname === href ? " bg-primary/10 font-semibold text-primary" : " text-muted-foreground hover:bg-muted")}>{label}</Link>)}</div>}</Fragment>)}
       {available("/settings") && <>
         <p className="px-3 pb-2 pt-7 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">System</p>
         {link("/settings", "Settings", Settings)}
