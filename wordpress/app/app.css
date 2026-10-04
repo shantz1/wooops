@@ -2,7 +2,7 @@
  * KartoDesk styles inside wp-admin.
  * - Tailwind's global preflight is not loaded, so wp-admin itself is never restyled.
  * - wp-admin CSS is unlayered and would beat layered utilities, so utilities are marked important.
- * - The reset below is scoped to #storeops-root with ID specificity so it outranks wp-admin's element styles.
+ * - The reset below is scoped to #kartodesk-root with ID specificity so it outranks wp-admin's element styles.
  */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
@@ -14,25 +14,18 @@
 @source "../../src";
 @source "./";
 
-/* Embed the workspace in its own admin page; preserve WordPress navigation and notices. */
-body.storeops-admin #storeops-root {
-  position: relative;
-  inset: auto;
-  z-index: auto;
-  min-height: calc(100vh - 100px);
-  overflow: hidden;
-  transform: translateZ(0); /* Contain the panel's fixed sidebar/mobile drawer. */
-}
-body.storeops-admin #storeops-root > div { min-height: calc(100vh - 100px); }
-body.storeops-app { overflow: hidden; }
-
-#storeops-root {
+/*
+ * The workspace is ordinary content of its own admin page (Admin menu > KartoDesk). WordPress's menu,
+ * admin bar, footer and every notice stay visible and usable; nothing is positioned over them.
+ */
+#kartodesk-root {
   --font-geist-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  position: fixed;
-  inset: 0;
-  z-index: 100000; /* Above the WordPress admin bar (99999). */
-  overflow: auto;
+  position: relative;
+  margin: 12px 20px 20px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: clip;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans);
@@ -40,8 +33,9 @@ body.storeops-app { overflow: hidden; }
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
+@media (max-width: 782px) { #kartodesk-root { margin: 10px 10px 16px 0; } }
 
-#storeops-root *, #storeops-root ::before, #storeops-root ::after, #storeops-root ::backdrop {
+#kartodesk-root *, #kartodesk-root ::before, #kartodesk-root ::after, #kartodesk-root ::backdrop {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -49,17 +43,17 @@ body.storeops-app { overflow: hidden; }
   outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
 }
 
-#storeops-root :is(h1, h2, h3, h4, h5, h6) { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; }
-#storeops-root :is(p, dl, dd, address, figure, blockquote) { font-size: inherit; line-height: inherit; }
-#storeops-root :is(ol, ul, li) { list-style: none; }
-#storeops-root a { color: inherit; text-decoration: inherit; }
-#storeops-root a:is(:hover, :focus, :active) { color: inherit; box-shadow: none; }
-#storeops-root :is(img, svg, video) { display: block; vertical-align: middle; }
-#storeops-root :is(img, video) { max-width: 100%; height: auto; }
-#storeops-root table { border-collapse: collapse; text-indent: 0; }
-#storeops-root :is(b, strong) { font-weight: 600; }
+#kartodesk-root :is(h1, h2, h3, h4, h5, h6) { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; }
+#kartodesk-root :is(p, dl, dd, address, figure, blockquote) { font-size: inherit; line-height: inherit; }
+#kartodesk-root :is(ol, ul, li) { list-style: none; }
+#kartodesk-root a { color: inherit; text-decoration: inherit; }
+#kartodesk-root a:is(:hover, :focus, :active) { color: inherit; box-shadow: none; }
+#kartodesk-root :is(img, svg, video) { display: block; vertical-align: middle; }
+#kartodesk-root :is(img, video) { max-width: 100%; height: auto; }
+#kartodesk-root table { border-collapse: collapse; text-indent: 0; }
+#kartodesk-root :is(b, strong) { font-weight: 600; }
 
-#storeops-root :is(button, input, select, textarea) {
+#kartodesk-root :is(button, input, select, textarea) {
   font: inherit;
   color: inherit;
   letter-spacing: inherit;
@@ -74,14 +68,14 @@ body.storeops-app { overflow: hidden; }
   box-shadow: none;
   vertical-align: baseline;
 }
-#storeops-root :is(button, input, select, textarea):focus { box-shadow: none; }
-#storeops-root :is(button, [role="button"]) { cursor: pointer; }
-#storeops-root :disabled { cursor: default; }
-#storeops-root select { appearance: auto; }
-#storeops-root input::placeholder, #storeops-root textarea::placeholder { color: var(--muted-foreground); opacity: 1; }
+#kartodesk-root :is(button, input, select, textarea):focus { box-shadow: none; }
+#kartodesk-root :is(button, [role="button"]) { cursor: pointer; }
+#kartodesk-root :disabled { cursor: default; }
+#kartodesk-root select { appearance: auto; }
+#kartodesk-root input::placeholder, #kartodesk-root textarea::placeholder { color: var(--muted-foreground); opacity: 1; }
 
 /* wp-admin draws custom checkboxes and radios; restore the native controls inside the panel. */
-#storeops-root :is([type="checkbox"], [type="radio"]) {
+#kartodesk-root :is([type="checkbox"], [type="radio"]) {
   appearance: auto;
   width: auto;
   height: auto;
@@ -89,17 +83,17 @@ body.storeops-app { overflow: hidden; }
   border: 0;
   vertical-align: middle;
 }
-#storeops-root :is([type="checkbox"], [type="radio"])::before { content: none !important; }
+#kartodesk-root :is([type="checkbox"], [type="radio"])::before { content: none !important; }
 
-#storeops-root dialog { color: inherit; }
-#storeops-root dialog::backdrop { background: rgb(0 0 0 / 0.4); }
+#kartodesk-root dialog { color: inherit; }
+#kartodesk-root dialog::backdrop { background: rgb(0 0 0 / 0.4); }
 
-/* Printing (packing slips): the panel is a fixed, scrolling overlay on screen; print it as normal flowing content. */
+/* Printing (packing slips): only while printing, leave out the admin chrome so just the slip is on paper. */
 @media print {
   html.wp-toolbar { padding-top: 0 !important; }
-  body.storeops-app { overflow: visible !important; background: #fff !important; }
-  body.storeops-admin :is(#adminmenumain, #wpadminbar, #wpfooter, #screen-meta, #screen-meta-links, .notice, .update-nag) { display: none !important; }
-  body.storeops-admin #wpbody-content > :not(#storeops-root) { display: none !important; }
-  body.storeops-admin :is(#wpcontent, #wpbody, #wpbody-content) { margin: 0 !important; padding: 0 !important; float: none !important; }
-  #storeops-root { transform: none !important; position: static !important; inset: auto !important; overflow: visible !important; background: #fff !important; }
+  body.kartodesk-admin { background: #fff !important; }
+  body.kartodesk-admin :is(#adminmenumain, #wpadminbar, #wpfooter, #screen-meta, #screen-meta-links, .notice, .update-nag) { display: none !important; }
+  body.kartodesk-admin #wpbody-content > :not(#kartodesk-root) { display: none !important; }
+  body.kartodesk-admin :is(#wpcontent, #wpbody, #wpbody-content) { margin: 0 !important; padding: 0 !important; float: none !important; }
+  #kartodesk-root { margin: 0 !important; border: 0 !important; border-radius: 0 !important; overflow: visible !important; background: #fff !important; }
 }

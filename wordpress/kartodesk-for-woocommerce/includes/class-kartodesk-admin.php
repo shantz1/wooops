@@ -31,76 +31,10 @@ class KartoDesk_Admin {
 	 */
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
-		add_action( 'init', array( __CLASS__, 'redirect_legacy_page' ), 1 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 		add_filter( 'script_loader_tag', array( __CLASS__, 'module_script' ), 10, 2 );
 		add_filter( 'admin_body_class', array( __CLASS__, 'body_class' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( KARTODESK_FILE ), array( __CLASS__, 'action_links' ) );
-		add_action( 'init', array( __CLASS__, 'register_clean_route' ) );
-		add_filter( 'query_vars', array( __CLASS__, 'query_vars' ) );
-		add_action( 'parse_request', array( __CLASS__, 'preserve_manage_page' ) );
-		add_action( 'template_redirect', array( __CLASS__, 'clean_panel' ), 0 );
-	}
-
-	/** Preserve old bookmarks while moving the visible admin URL to the new name. */
-	public static function redirect_legacy_page() {
-		// A read-only navigation redirect; no state is changed and no nonce is required.
-		$page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( is_admin() && 'storeops' === $page && current_user_can( 'manage_woocommerce' ) ) {
-			wp_safe_redirect( admin_url( 'admin.php?page=' . self::PAGE ) );
-			exit;
-		}
-	}
-
-	/** A clean entry point; never replace an existing /manage page. */
-	public static function register_clean_route() {
-		if ( ! get_page_by_path( 'manage' ) ) {
-			add_rewrite_rule( '^manage/?$', 'index.php?storeops_panel=1', 'top' );
-		}
-	}
-
-	/** Register the private panel route flag. */
-	public static function query_vars( $vars ) {
-		$vars[] = 'storeops_panel';
-		return $vars;
-	}
-
-	/** A page created after activation also wins over a previously saved rewrite rule. */
-	public static function preserve_manage_page( $wp ) {
-		if ( ! empty( $wp->query_vars['storeops_panel'] ) && get_page_by_path( 'manage' ) ) {
-			unset( $wp->query_vars['storeops_panel'] );
-			$wp->query_vars['pagename'] = 'manage';
-		}
-	}
-
-	/** Serve just the panel, without loading the storefront theme or wp-admin. */
-	public static function clean_panel() {
-		if ( ! get_query_var( 'storeops_panel' ) || get_page_by_path( 'manage' ) ) {
-			return;
-		}
-		nocache_headers();
-		header( 'X-Frame-Options: DENY' );
-		header( "Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'" );
-		header( 'X-Content-Type-Options: nosniff' );
-		header( 'Referrer-Policy: no-referrer' );
-		if ( ! is_user_logged_in() ) {
-			wp_safe_redirect( wp_login_url( home_url( '/manage/' ) ) );
-			exit;
-		}
-		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'You do not have permission to open KartoDesk.', 'kartodesk-for-woocommerce' ), '', array( 'response' => 403 ) );
-		}
-		status_header( 200 );
-		self::enqueue_assets();
-		echo '<!doctype html><html ';
-		language_attributes();
-		echo '><head><meta charset="' . esc_attr( get_bloginfo( 'charset' ) ) . '"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/svg+xml" href="' . esc_url( plugins_url( 'build/kartodesk.svg', KARTODESK_FILE ) ) . '"><title>' . esc_html__( 'KartoDesk', 'kartodesk-for-woocommerce' ) . '</title>';
-		wp_print_styles( array( 'storeops-app' ) );
-		echo '</head><body class="storeops-app">';
-		self::render();
-		wp_print_scripts( array( 'storeops-app' ) );
-		echo '</body></html>';
-		exit;
 	}
 
 	/**
@@ -122,7 +56,7 @@ class KartoDesk_Admin {
 	 * Prints the mount point. The workspace stays inside its own wp-admin page.
 	 */
 	public static function render() {
-		echo '<div id="storeops-root" class="storeops-root"><p style="padding:2rem">' . esc_html__( 'Loading KartoDesk…', 'kartodesk-for-woocommerce' ) . '</p><noscript><p>' . esc_html__( 'KartoDesk needs JavaScript enabled.', 'kartodesk-for-woocommerce' ) . '</p></noscript></div>';
+		echo '<div id="kartodesk-root" class="kartodesk-root"><p style="padding:2rem">' . esc_html__( 'Loading KartoDesk…', 'kartodesk-for-woocommerce' ) . '</p><noscript><p>' . esc_html__( 'KartoDesk needs JavaScript enabled.', 'kartodesk-for-woocommerce' ) . '</p></noscript></div>';
 	}
 
 	/**
@@ -134,19 +68,14 @@ class KartoDesk_Admin {
 		if ( $hook_suffix !== self::$hook ) {
 			return;
 		}
-		self::enqueue_assets();
-	}
-
-	/** Enqueue the same assets and authenticated configuration in either entry point. */
-	private static function enqueue_assets() {
 		$build = KARTODESK_DIR . 'build/';
 		if ( ! file_exists( $build . 'app.js' ) ) {
 			add_action( 'admin_notices', array( __CLASS__, 'missing_build_notice' ) );
 			return;
 		}
 		$url = plugins_url( 'build/', KARTODESK_FILE );
-		wp_enqueue_style( 'storeops-app', $url . 'app.css', array(), KARTODESK_VERSION . '-' . filemtime( $build . 'app.css' ) );
-		wp_enqueue_script( 'storeops-app', $url . 'app.js', array(), KARTODESK_VERSION . '-' . filemtime( $build . 'app.js' ), true );
+		wp_enqueue_style( 'kartodesk-app', $url . 'app.css', array(), KARTODESK_VERSION . '-' . filemtime( $build . 'app.css' ) );
+		wp_enqueue_script( 'kartodesk-app', $url . 'app.js', array(), KARTODESK_VERSION . '-' . filemtime( $build . 'app.js' ), true );
 
 		$config = array(
 			'platform'  => 'wordpress',
@@ -156,12 +85,12 @@ class KartoDesk_Admin {
 			'adminUrl'  => admin_url(),
 			'features'  => self::FEATURES,
 		);
-		wp_add_inline_script( 'storeops-app', 'window.kartoDeskConfig = ' . wp_json_encode( $config ) . ';', 'before' );
+		wp_add_inline_script( 'kartodesk-app', 'window.kartoDeskConfig = ' . wp_json_encode( $config ) . ';', 'before' );
 	}
 
 	/** The entry uses local ES modules so each screen can load its own chunk. */
 	public static function module_script( $tag, $handle ) {
-		if ( 'storeops-app' !== $handle ) {
+		if ( 'kartodesk-app' !== $handle ) {
 			return $tag;
 		}
 		$tag = preg_replace( '/\s+type=([\x27\x22]).*?\1/', '', $tag );
@@ -177,7 +106,7 @@ class KartoDesk_Admin {
 	public static function body_class( $classes ) {
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 		if ( $screen && $screen->id === self::$hook ) {
-			$classes .= ' storeops-admin';
+			$classes .= ' kartodesk-admin';
 		}
 		return $classes;
 	}

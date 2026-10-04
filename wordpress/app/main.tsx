@@ -51,7 +51,7 @@ class ScreenErrorBoundary extends Component<{ children: ReactNode }, { failed: b
   }
 }
 
-const root = document.getElementById("storeops-root");
+const root = document.getElementById("kartodesk-root");
 if (root) {
   createRoot(root).render(
     <HashRouter>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, BarChart3, Boxes, LayoutDashboard, Loader2, LogOut, Menu, Package, Settings, ShoppingCart, Users, X } from "lucide-react";
+import { BarChart3, Boxes, LayoutDashboard, Loader2, LogOut, Menu, Package, Settings, ShoppingCart, Users, X } from "lucide-react";
 import { usePanelPreferences } from "@/components/panel-preferences";
 import { isAvailable as available, wordpressRuntime } from "@/lib/runtime";
 
@@ -56,7 +56,64 @@ function Brand() {
   );
 }
 
-/** WordPress manages sign-in for the plugin; the header's dashboard button is the way back to wp-admin. */
+/**
+ * Inside wp-admin the panel is ordinary page content next to WordPress's own menu. Its navigation is a
+ * vertical list in the panel (sticky below the admin bar on desktop, a drawer opened by a button on small
+ * screens). Nothing is positioned over the admin screen.
+ */
+function EmbeddedShell({ pathname, children }: { pathname: string; children: React.ReactNode }) {
+  const menu = useRef<HTMLDialogElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = () => menu.current?.close();
+  // In the plugin the URL hash holds the panel route, so skipping to content moves focus without changing it.
+  const skipToContent = (event: React.MouseEvent) => { event.preventDefault(); document.getElementById("main")?.focus(); };
+
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 64rem)");
+    const close = () => { if (desktop.matches) menu.current?.close(); };
+    desktop.addEventListener("change", close);
+    return () => desktop.removeEventListener("change", close);
+  }, []);
+
+  return (
+    <div className="flex min-h-[calc(100vh-160px)] bg-muted/30 text-foreground">
+      <a href="#main" onClick={skipToContent} className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm focus:not-sr-only focus:absolute focus:left-3 focus:top-3">Skip to content</a>
+      <aside className="hidden w-60 shrink-0 border-r bg-background lg:block">
+        <div className="sticky top-8">
+          <div className="flex h-16 items-center border-b px-5"><Brand /></div>
+          <nav aria-label="KartoDesk" className="space-y-1 p-3"><NavLinks pathname={pathname} /></nav>
+        </div>
+      </aside>
+
+      <dialog ref={menu} id="kartodesk-navigation" aria-label="KartoDesk navigation" onClose={() => setMenuOpen(false)}
+        onClick={event => { if (event.target === menu.current) closeMenu(); }}
+        className="m-0 h-dvh max-h-dvh w-72 max-w-[85vw] border-r bg-background p-0 text-foreground backdrop:bg-black/40 lg:hidden">
+        <div className="flex h-full flex-col">
+          <div className="flex h-16 items-center justify-between border-b px-5">
+            <Brand />
+            <button type="button" onClick={closeMenu} aria-label="Close navigation" className={`rounded-md p-2 hover:bg-muted ${focusRing}`}>
+              <X className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+          <nav aria-label="KartoDesk" className="flex-1 space-y-1 overflow-y-auto p-3"><NavLinks pathname={pathname} onNavigate={closeMenu} /></nav>
+        </div>
+      </dialog>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex h-14 items-center gap-2 border-b bg-background px-4 lg:hidden">
+          <button type="button" onClick={() => { menu.current?.showModal(); setMenuOpen(true); }} aria-label="Open KartoDesk navigation"
+            aria-expanded={menuOpen} aria-controls="kartodesk-navigation" className={`-ml-1 rounded-md p-2 hover:bg-muted ${focusRing}`}>
+            <Menu className="size-5" aria-hidden="true" />
+          </button>
+          <Brand />
+        </div>
+        <main id="main" tabIndex={-1} className="mx-auto max-w-[1400px] p-4 outline-none sm:p-6">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+/** WordPress manages sign-in for the plugin, so only the standalone app shows sign-out. */
 function SignOut() {
   return wordpressRuntime() ? null : <PasswordSignOut />;
 }
@@ -113,6 +170,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => desktop.removeEventListener("change", close);
   }, []);
 
+  if (wordpressRuntime()) return <EmbeddedShell pathname={pathname}>{children}</EmbeddedShell>;
+
   return (
     <div className="min-h-screen bg-muted/30 text-foreground">
       <a href="#main" className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to content</a>
@@ -147,11 +206,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <div className="min-w-0"><p className="truncate text-sm font-medium">Operations</p><p className="truncate text-xs text-muted-foreground">Your store, in focus</p></div>
           </div>
-          {wordpressRuntime()
-            ? <a href={wordpressRuntime()!.adminUrl} className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border bg-background px-3 py-2 text-sm font-medium hover:bg-muted ${focusRing}`}>
-                <ArrowLeft className="size-4" aria-hidden="true" /><span>WordPress<span className="hidden sm:inline"> dashboard</span></span>
-              </a>
-            : <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">Store workspace</div>}
+          <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">Store workspace</div>
         </header>
         <main id="main" tabIndex={-1} className="mx-auto max-w-[1500px] p-4 outline-none sm:p-5 lg:p-8">{children}</main>
       </div>

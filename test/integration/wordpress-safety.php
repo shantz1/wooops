@@ -19,7 +19,9 @@ $empty = $reader->invoke( null, array( 'meta_data' => array( array( 'id' => 1, '
 if ( array( 1, array() ) !== $empty ) { throw new RuntimeException( 'Empty tracking list was not preserved.' ); }
 ++ $checks;
 
-wp_set_current_user( get_user_by( 'login', 'storeops_admin' )->ID );
+$admins = get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' => 'ID' ) );
+if ( ! $admins ) { throw new RuntimeException( 'The disposable site needs an administrator.' ); }
+wp_set_current_user( (int) $admins[0] );
 $old_timezone = get_option( 'timezone_string' );
 update_option( 'timezone_string', 'Asia/Kolkata' );
 $capture = array();
@@ -53,16 +55,14 @@ try {
 }
 echo $checks . " tracking/report safety checks passed.\n";
 
-$page = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Review manage collision', 'post_name' => 'manage' ), true );
-if ( is_wp_error( $page ) ) { throw new RuntimeException( 'Could not create test page.' ); }
-try {
-	$parsed = new stdClass();
-	$parsed->query_vars = array( 'storeops_panel' => 1 );
-	KartoDesk_Admin::preserve_manage_page( $parsed );
-	if ( isset( $parsed->query_vars['storeops_panel'] ) || 'manage' !== $parsed->query_vars['pagename'] ) {
-		throw new RuntimeException( 'Existing manage page was shadowed.' );
+// The plugin must not register any front-end URL (the pre-release /manage/ route was removed).
+global $wp_rewrite;
+foreach ( array_keys( (array) $wp_rewrite->extra_rules_top ) as $rule ) {
+	if ( false !== strpos( (string) $wp_rewrite->extra_rules_top[ $rule ], 'storeops_panel' ) || '^manage/?$' === $rule ) {
+		throw new RuntimeException( 'KartoDesk still registers a front-end route.' );
 	}
-	echo "Existing /manage page is preserved.\n";
-} finally {
-	wp_delete_post( $page, true );
 }
+if ( has_action( 'template_redirect', array( 'KartoDesk_Admin', 'clean_panel' ) ) ) {
+	throw new RuntimeException( 'KartoDesk still intercepts front-end requests.' );
+}
+echo "No front-end routes are registered.\n";

@@ -4,7 +4,7 @@ Tags: woocommerce, orders, shipment tracking, order notes, fulfilment
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.3
+Stable tag: 0.1.4
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -73,6 +73,11 @@ KartoDesk does not track users or send telemetry. Its own scripts and styles loa
 
 == Changelog ==
 
+= 0.1.4 =
+* Use a vertical KartoDesk menu inside its admin page (a drawer on small screens), alongside the WordPress menu.
+* Remove the separate front-end panel URL; KartoDesk opens from its admin menu only.
+* Use the kartodesk prefix for all handles and identifiers.
+
 = 0.1.3 =
 * Keep WordPress navigation and other plugins' notices visible on the KartoDesk admin page.
 * Scope the WooCommerce dependency notice to the Plugins screen.
@@ -92,5 +97,3 @@ KartoDesk does not track users or send telemetry. Its own scripts and styles loa
 
 = 0.1.0 =
 * Initial release with overview, orders, products, customers, inventory, reports, settings, notes and tracking.
-
-The clean panel URL is `/manage/` (under the WordPress installation path). Use readable permalinks. After updating, save Settings > Permalinks once if the URL returns 404. An existing page named `manage` takes priority; use the wp-admin menu instead. When replacing the earlier StoreOps test plugin, deactivate it before activating KartoDesk.

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 /**
- * Hash routing for the wp-admin page (admin.php?page=storeops#/orders/12). The query string belongs to
+ * Hash routing for the wp-admin page (admin.php?page=kartodesk#/orders/12). The query string belongs to
  * WordPress, so panel paths live in the fragment. Fragments that are not paths (e.g. #main) are ignored.
  */
 function readPath() {
@@ -18,7 +18,13 @@ export function HashRouter({ children }: { children: React.ReactNode }) {
       const next = readPath();
       if (next === null) return;
       setPath(next);
-      document.getElementById("storeops-root")?.scrollTo(0, 0);
+      // The panel is part of the admin page: bring its top back into view, below WordPress's fixed admin bar.
+      const panel = document.getElementById("kartodesk-root");
+      const adminBar = document.getElementById("wpadminbar")?.offsetHeight ?? 0;
+      if (panel) {
+        const top = panel.getBoundingClientRect().top + window.scrollY - adminBar - 8;
+        if (window.scrollY > top) window.scrollTo({ top });
+      }
     };
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
