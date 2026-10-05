@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { usePanelPreferences } from "@/components/panel-preferences";
 import { Notice } from "@/components/ui/feedback";
@@ -49,7 +49,7 @@ function RoleCard({ role, editable, onSaved }: { role: AccessRules["roles"][numb
   }
 
   return (
-    <li className="rounded-lg border p-4">
+    <div className="rounded-lg border p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-medium">{role.label} <span className="text-xs font-normal text-muted-foreground">({role.slug})</span></h3>
         {role.locked
@@ -85,7 +85,7 @@ function RoleCard({ role, editable, onSaved }: { role: AccessRules["roles"][numb
         </button>
       </div>}
       {result && <Notice tone={result.tone} className="mt-3">{result.message}</Notice>}
-    </li>
+    </div>
   );
 }
 
@@ -94,9 +94,13 @@ export function AccessSettings({ access, inWordPress }: { access: AccessSummary;
   const { access: workspace } = usePanelPreferences();
   const [rules, setRules] = useState<AccessRules | null>(access.rules);
   const [showAll, setShowAll] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const tabId = useId();
+  const tabButtons = useRef<Array<HTMLButtonElement | null>>([]);
   const mine = workspace?.permissions ?? access.permissions;
   const roles = rules?.roles.filter(role => showAll || role.locked || role.permissions.length > 0) ?? [];
   const hidden = (rules?.roles.length ?? 0) - roles.length;
+  const activeRole = roles.some(role => role.slug === selectedRole) ? selectedRole : roles[0]?.slug;
 
   return (
     <section aria-labelledby="access-heading" className="rounded-xl border bg-background p-5 shadow-sm">
@@ -125,9 +129,27 @@ export function AccessSettings({ access, inWordPress }: { access: AccessSummary;
               ? "Roles and logins come from the access file (WOOOPS_ACCESS_FILE) on the server. Edit that file to change them; saving it signs everyone out."
               : "Only the built-in administrator and read-only logins are configured. Add an access file (WOOOPS_ACCESS_FILE) for named logins and custom roles."}
         </p>
-        <ul className="mt-4 space-y-3">
-          {roles.map(role => <RoleCard key={`${role.slug}:${role.permissions.join(",")}`} role={role} editable={inWordPress && rules.editable} onSaved={setRules} />)}
-        </ul>
+        <div role="tablist" aria-label="Role permissions" className="mt-4 flex flex-wrap gap-2 border-b pb-3">
+          {roles.map((role, index) => <button key={role.slug} ref={element => { tabButtons.current[index] = element; }}
+            type="button" role="tab" id={`${tabId}-tab-${role.slug}`} aria-controls={`${tabId}-panel-${role.slug}`}
+            aria-selected={role.slug === activeRole} tabIndex={role.slug === activeRole ? 0 : -1}
+            onClick={() => setSelectedRole(role.slug)}
+            onKeyDown={event => {
+              const next = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: roles.length - 1 }[event.key];
+              if (next === undefined) return;
+              event.preventDefault();
+              const target = (next + roles.length) % roles.length;
+              setSelectedRole(roles[target].slug);
+              tabButtons.current[target]?.focus();
+            }}
+            className={`rounded-lg border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${role.slug === activeRole ? "border-primary font-semibold text-primary" : "text-muted-foreground hover:bg-accent"}`}>
+            {role.label}
+          </button>)}
+        </div>
+        {roles.map(role => <div key={role.slug} role="tabpanel" id={`${tabId}-panel-${role.slug}`}
+          aria-labelledby={`${tabId}-tab-${role.slug}`} hidden={role.slug !== activeRole} className="mt-4">
+          <RoleCard key={`${role.slug}:${role.permissions.join(",")}`} role={role} editable={inWordPress && rules.editable} onSaved={setRules} />
+        </div>)}
         {hidden > 0 && <button type="button" onClick={() => setShowAll(true)} className="mt-3 text-sm underline underline-offset-2">Show {hidden} role{hidden === 1 ? "" : "s"} without KartoDesk access</button>}
         {!inWordPress && rules.logins.length > 0 && <>
           <h3 className="mt-6 text-sm font-semibold">Logins</h3>
