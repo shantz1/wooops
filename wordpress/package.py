@@ -5,7 +5,7 @@ import re
 
 root = Path(__file__).resolve().parent
 plugin = root / "kartodesk-for-woocommerce"
-required = ["kartodesk-for-woocommerce.php", "readme.txt", "license.txt", "build/app.js", "build/app.css", "build/kartodesk.svg"]
+required = ["kartodesk-for-woocommerce.php", "uninstall.php", "readme.txt", "license.txt", "build/app.js", "build/app.css", "build/kartodesk.svg"]
 for name in required:
     if not (plugin / name).is_file():
         raise SystemExit(f"Missing {name}; run npm run build:wp first.")

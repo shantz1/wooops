@@ -10,7 +10,9 @@ import { fetchJson } from "@/lib/fetch-json";
 
 export function CreateProductForm() {
   const router = useRouter();
-  const { canWrite } = usePanelPreferences();
+  const { can } = usePanelPreferences();
+  const canWrite = can("products.edit");
+  const canStock = can("inventory.edit");
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
   const [price, setPrice] = useState("");
@@ -43,8 +45,8 @@ export function CreateProductForm() {
           description: description.trim(),
           image_url: imageUrl.trim(),
           status,
-          manage_stock: manageStock,
-          ...(manageStock ? { stock_quantity: Number(stock) } : {}),
+          manage_stock: manageStock && canStock,
+          ...(manageStock && canStock ? { stock_quantity: Number(stock) } : {}),
         },
       });
       router.push("/products");
@@ -56,7 +58,7 @@ export function CreateProductForm() {
     }
   }
 
-  if (!canWrite) return <p role="status">Product creation requires administrator access.</p>;
+  if (!canWrite) return <p role="status">Your role cannot create products.</p>;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -88,7 +90,7 @@ export function CreateProductForm() {
         </div>
         <p className="-mt-3 text-xs text-muted-foreground">Use an existing Media Library image URL from this store. Direct file upload is not available yet.</p>
         <label className="flex items-center gap-3 text-sm font-medium">
-          <input type="checkbox" checked={manageStock} onChange={event => setManageStock(event.target.checked)} /> Manage stock
+          <input type="checkbox" checked={manageStock && canStock} disabled={!canStock} onChange={event => setManageStock(event.target.checked)} /> Manage stock{!canStock && <span className="text-xs font-normal text-muted-foreground">(your role cannot change stock)</span>}
         </label>
         {manageStock && <label className="block text-sm font-medium">Stock quantity
           <input required type="number" min="0" step="1" value={stock} onChange={event => setStock(event.target.value)} className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />

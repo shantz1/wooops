@@ -1,0 +1,24 @@
+{
+  "roles": {
+    "packer": {
+      "label": "Packer",
+      "permissions": ["orders.view", "orders.notes", "orders.shipments"]
+    },
+    "support": {
+      "label": "Customer support",
+      "permissions": ["orders.view", "orders.notes", "orders.notify", "customers.view"]
+    },
+    "stock": {
+      "label": "Stock clerk",
+      "permissions": ["products.view", "inventory.edit"]
+    }
+  },
+  "logins": [
+    {
+      "username": "pat",
+      "name": "Pat (packing)",
+      "role": "packer",
+      "password_hash": "replace with the output of: npm run setup:password"
+    }
+  ]
+}

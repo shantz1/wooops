@@ -1,4 +1,4 @@
-import { authorizeRequest } from "@/lib/request-guard";
+import { authorizeRequest, requirePermissions } from "@/lib/request-guard";
 import { readRequestJson } from "@/lib/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { isWooCommerceConfigured, wooFetch, wooFetchWithHeaders } from "@/lib/woocommerce/client";
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     (body.status === "draft" || body.status === "publish") && typeof body.manage_stock === "boolean" &&
     (!body.manage_stock || (Number.isSafeInteger(body.stock_quantity) && body.stock_quantity >= 0));
   if (!valid) return NextResponse.json({ error: "Invalid simple product details." }, { status: 400 });
+  if (body.manage_stock === true) { const stock = requirePermissions(request, ["inventory.edit"]); if (stock) return stock; }
 
   const payload = {
     name: body.name.trim(),

@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authConfigurationError, authEnabled, cookieName, publicOrigin, sessionRole } from "@/lib/auth";
+import type { Identity } from "@/lib/access";
+import { authConfigurationError, authEnabled, cookieName, publicOrigin, sessionIdentity } from "@/lib/auth";
+import { allPermissions, meetsRequirement, routePermissions, type Requirement } from "@/lib/permissions";
 
 function deny(error: string, status: number) {
   return NextResponse.json({ error }, { status, headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
-/** Enforced in both Proxy and route handlers; routing is not the sole permission boundary. */
+
+/** The signed-in login for this request (full access when sign-in is not configured in development). */
+export function requestIdentity(request: NextRequest): Identity | null {
+  return sessionIdentity(request.cookies.get(cookieName)?.value);
+}
+
+function forbidden(identity: Identity) {
+  return deny(`Your role (${identity.roleLabel}) does not allow this action.`, 403);
+}
+
+/**
+ * Enforced in both Proxy and route handlers; routing is not the sole permission boundary.
+ * Every API route has a required permission (see routePermissions). Routes that are not listed are refused
+ * unless the login has every permission.
+ */
 export function authorizeRequest(request: NextRequest): NextResponse | null {
   const path = request.nextUrl.pathname;
   const configurationError = authConfigurationError();
@@ -19,10 +35,24 @@ export function authorizeRequest(request: NextRequest): NextResponse | null {
     return deny("Cross-site requests are not allowed.", 403);
   }
   if (path === "/login" || path === "/api/auth/login") return null;
-  const role = sessionRole(request.cookies.get(cookieName)?.value);
-  if (authEnabled() && !role) return deny("Unauthorized", 401);
-  if (role === "readonly" && (unsafe && path !== "/api/auth/logout" || path === "/products/new")) {
-    return deny("This login has read-only access.", 403);
+  const identity = requestIdentity(request);
+  if (!identity) return deny("Unauthorized", authEnabled() ? 401 : 503);
+  if (path === "/api/auth/logout") return null;
+  if (path.startsWith("/api/")) {
+    const requirement = routePermissions(request.method, path);
+    if (requirement === null) {
+      return allPermissions.every(permission => identity.permissions.includes(permission)) ? null : forbidden(identity);
+    }
+    return meetsRequirement(requirement, identity.permissions) ? null : forbidden(identity);
   }
+  // Pages contain no store data (the API is the boundary); the panel explains missing access on screen.
+  if (path === "/products/new" && !identity.permissions.includes("products.edit")) return forbidden(identity);
   return null;
+}
+
+/** Extra checks that depend on the request body, e.g. a customer-facing note also needs `orders.notify`. */
+export function requirePermissions(request: NextRequest, requirement: Requirement): NextResponse | null {
+  const identity = requestIdentity(request);
+  if (!identity) return deny("Unauthorized", 401);
+  return meetsRequirement(requirement, identity.permissions) ? null : forbidden(identity);
 }

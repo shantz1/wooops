@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Palette, ShieldCheck, Store } from "lucide-react";
+import { Palette, Store } from "lucide-react";
+import { AccessSettings, type AccessSummary } from "@/components/access-settings";
 import { ConnectionStatus } from "@/components/connection-status";
 import { usePanelPreferences, type PanelPreferences } from "@/components/panel-preferences";
 import { ErrorState, LoadingState, Notice, RetryButton } from "@/components/ui/feedback";
 import { wordpressRuntime } from "@/lib/runtime";
 import { useRemote } from "@/lib/use-remote";
 
-type Settings = { timezone: string; timezone_warning: string | null; configured: boolean; store_url: string | null; access: { protected: boolean; session_ready: boolean; role?: string; two_factor?: boolean };
+type Settings = { timezone: string; timezone_warning: string | null; configured: boolean; store_url: string | null; access: AccessSummary;
   store: { currency: string | null; decimal_places: string | null; country: string | null; prices_include_tax: string | null } | null; store_error?: string };
 
 function Appearance() {
@@ -49,12 +50,7 @@ export function SettingsPanel() {
           </dl><p className="text-xs text-muted-foreground">Dates follow the store timezone. Change it in the store&apos;s General settings, then refresh this panel.</p>{data.timezone_warning && <Notice tone="warning">{data.timezone_warning}</Notice>}{data.store_error && <Notice tone="warning">Store details could not be read. {data.store_error}</Notice>}
           <p className="text-xs text-muted-foreground">{inWordPress ? "Store details are read-only here. This plugin uses your WordPress account and needs no API keys." : "Store details are read-only here. Connection credentials are managed by the deployment administrator and never displayed."}</p></>}
       </section>
-      <section className="rounded-xl border bg-background p-5 shadow-sm">
-        <h2 className="flex items-center gap-2 font-semibold"><ShieldCheck className="size-5 text-primary" />Access & sessions</h2>
-        {inWordPress ? <Notice tone="success" className="mt-4">Access uses your signed-in WordPress account. Only store managers and administrators can open this panel.</Notice> : data && <Notice tone={data.access.protected && data.access.session_ready ? "success" : "warning"} className="mt-4">{data.access.protected ? data.access.session_ready ? "Password protection is enabled. Sessions expire after twelve hours." : "Password protection is enabled, but session signing is not configured." : "Password protection is disabled. Anyone who can reach this panel can access it."}</Notice>}
-        {!inWordPress && data && <p className="mt-3 text-sm font-medium">Access: {data.access.role === "readonly" ? "Read only" : "Administrator"} ? Two-factor login: {data.access.two_factor ? "Enabled" : "Not enabled"}</p>}
-        <p className="mt-3 text-sm text-muted-foreground">{inWordPress ? "WordPress manages login, session expiry and account permissions." : "This workspace uses separate administrator and optional read-only passwords. The deployment administrator manages password hashes, authenticator secrets and the session signing key."}</p>
-      </section>
+      {data && <AccessSettings access={data.access} inWordPress={inWordPress} />}
       <section className="rounded-xl border bg-background p-5 shadow-sm"><h2 className="font-semibold">Customer notifications</h2><p className="mt-3 text-sm text-muted-foreground">Customer-facing notes and shipment messages use the store&apos;s Customer note email. Enable that email and verify the store&apos;s mail delivery. Status changes may send separate store emails.</p><p className="mt-3 text-xs text-muted-foreground">A saved note confirms acceptance by the store, not delivery to the customer. New shipment notifications are off by default.</p></section>
     </div>
   </div>;

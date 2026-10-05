@@ -9,7 +9,9 @@ import { ListPagination } from "@/components/list-pagination";
 import { ErrorState, LoadingState, EmptyState, Notice } from "@/components/ui/feedback";
 
 export function ProductVariations({ product }: { product: ProductDetails }) {
-  const { canWrite } = usePanelPreferences();
+  const { can } = usePanelPreferences();
+  const canWrite = can("products.edit");
+  const canStock = can("inventory.edit");
   const [page, setPage] = useState(1), [edit, setEdit] = useState<CatalogItem | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const { data, loading, error: loadError, reload } = useRemote<CatalogResponse>("/api/woo/catalog?resource=variations&parent=" + product.id + "&page=" + page, "Unable to load variations.");
@@ -18,9 +20,9 @@ export function ProductVariations({ product }: { product: ProductDetails }) {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!edit || !canWrite) return;
     const form = new FormData(event.currentTarget);
-    const managed = form.get("manage_stock") === "on";
-    if (edit.id && managed !== Boolean(edit.manage_stock) && !window.confirm((managed ? "Enable" : "Disable") + " stock management for this variation?")) return;
-    const body = { sku: String(form.get("sku")), regular_price: String(form.get("regular_price")), sale_price: String(form.get("sale_price")), status: String(form.get("status")), manage_stock: managed, ...(managed ? { stock_quantity: Number(form.get("stock_quantity")) } : {}),
+    const managed = canStock ? form.get("manage_stock") === "on" : Boolean(edit.manage_stock);
+    if (canStock && edit.id && managed !== Boolean(edit.manage_stock) && !window.confirm((managed ? "Enable" : "Disable") + " stock management for this variation?")) return;
+    const body = { sku: String(form.get("sku")), regular_price: String(form.get("regular_price")), sale_price: String(form.get("sale_price")), status: String(form.get("status")), ...(canStock ? { manage_stock: managed, ...(managed ? { stock_quantity: Number(form.get("stock_quantity")) } : {}) } : {}),
       ...(!edit.id ? { attributes: options.map(attribute => ({ id: attribute.id, name: attribute.name, option: String(form.get("attribute-" + attribute.id + "-" + attribute.name)) })) } : {}) };
     setBusy(true); setError("");
     try { await fetchJson("/api/woo/catalog?resource=variations&parent=" + product.id + (edit.id ? "&id=" + edit.id : ""), { method: edit.id ? "PATCH" : "POST", json: body }); setEdit(null); reload(); }
@@ -33,8 +35,8 @@ export function ProductVariations({ product }: { product: ProductDetails }) {
       <fieldset disabled={busy} className="space-y-4">
         {!edit.id && options.map(attribute => <label key={attribute.id + "-" + attribute.name} className="block text-sm">{attribute.name}<select name={"attribute-" + attribute.id + "-" + attribute.name} required className={control}><option value="">Choose an option</option>{attribute.options.map(option => <option key={option} value={option}>{option}</option>)}</select></label>)}
         <div className="grid gap-4 sm:grid-cols-3">{["sku", "regular_price", "sale_price"].map(key => <label key={key} className="block text-sm">{key === "sku" ? "SKU" : key === "regular_price" ? "Regular price" : "Sale price"}<input name={key} maxLength={key === "sku" ? 100 : 30} defaultValue={String(edit[key as "sku" | "regular_price" | "sale_price"] || "")} className={control} /></label>)}</div>
-        <label className="flex gap-2 text-sm"><input name="manage_stock" type="checkbox" defaultChecked={edit.manage_stock} />Track stock quantity</label>
-        <label className="block text-sm">Quantity (used when tracking stock)<input name="stock_quantity" type="number" min={0} step={1} defaultValue={edit.stock_quantity ?? 0} className={control} /></label>
+        <label className="flex gap-2 text-sm"><input name="manage_stock" type="checkbox" disabled={!canStock} defaultChecked={edit.manage_stock} />Track stock quantity{!canStock && <span className="text-xs text-muted-foreground">(your role cannot change stock)</span>}</label>
+        <label className="block text-sm">Quantity (used when tracking stock)<input name="stock_quantity" type="number" min={0} step={1} disabled={!canStock} defaultValue={edit.stock_quantity ?? 0} className={control} /></label>
         <label className="block text-sm">Visibility<select name="status" defaultValue={edit.status || "private"} className={control}><option value="private">Disabled</option><option value="publish">Enabled</option></select></label>
       </fieldset><div className="flex gap-3"><button disabled={busy} className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground">{busy ? "Saving…" : "Save variation"}</button><button disabled={busy} type="button" onClick={() => setEdit(null)} className="rounded-lg border px-4 py-2 text-sm">Cancel</button></div>
     </form>}

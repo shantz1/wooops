@@ -75,6 +75,7 @@ Use an HTTPS reverse proxy, restrict direct access to the Node port and add per-
 ### Optional access controls
 
 - **Read-only staff:** generate a different password hash and set `WOOOPS_READONLY_PASSWORD_HASH`. That login can view customer data and export reports, but cannot change store records.
+- **Named logins and roles:** set `WOOOPS_ACCESS_FILE` to a JSON file that defines roles (sets of permissions) and logins (username, display name, role, password hash from `npm run setup:password`, optional `totp_secret`). See [`access.example.json`](access.example.json). Staff sign in with their username; leave it blank for the built-in administrator or read-only password. The file is re-read when it changes, and changing it signs everyone out. Keep it outside the web root and readable only by the service account.
 - **Authenticator codes:** run `npm run setup:2fa -- admin` and follow the output. Configure a separate secret for a read-only login with `npm run setup:2fa -- readonly`.
 - Sessions expire after **12 hours**. Credential changes invalidate them.
 - This MVP runs with **one Node process**. Built-in login limits and authenticator replay protection are not shared across instances.
@@ -83,13 +84,17 @@ Use an HTTPS reverse proxy, restrict direct access to the Node port and add per-
 
 ## WordPress plugin: KartoDesk
 
-1. Upload the packaged `kartodesk-for-woocommerce-0.1.5.zip` under **Plugins > Add New > Upload Plugin**.
+1. Upload the packaged `kartodesk-for-woocommerce-0.1.6.zip` under **Plugins > Add New > Upload Plugin**.
 2. Activate it and open **KartoDesk** in the admin menu. It runs inside its own wp-admin page; the WordPress menu, admin bar and notices stay visible.
 3. Use an administrator or store manager account. No Node server, API keys or WooOps password are needed.
 
 WordPress handles login, passwords and sessions. Existing WordPress 2FA/login protection applies; the plugin does not add its own login.
 
 Earlier pre-release builds also served the panel at `/manage/`. That URL was removed in 0.1.4; use the admin menu. Deactivate the earlier StoreOps test plugin before activating KartoDesk.
+
+### Roles and permissions
+
+Administrators choose what each WordPress role can do under **KartoDesk > Settings > Access and permissions**. Administrators always have full access; Shop managers start with full access. Other roles (Editor, or a custom role such as "Packer" made with a role editor) get only the permissions you tick. Permissions are stored as WordPress capabilities (`kartodesk_view_orders` and so on), so role-editor plugins can manage them too. WooCommerce's own capability checks still apply on top: if a role lacks the WooCommerce capability a permission relies on, Settings shows a warning. Deleting the plugin removes its capabilities from every role.
 
 Build the installable ZIP from source:
 
@@ -99,6 +104,26 @@ python wordpress/package.py
 ```
 
 The ZIP is created under `wordpress/dist/`. It includes every local screen module with portable paths. Shared source is in `src/`; plugin source is in `wordpress/`.
+
+## Permissions
+
+Both the standalone app and the plugin use the same permissions. The server checks them on every request; hiding a button is never the only protection.
+
+| Permission | Allows |
+| --- | --- |
+| `orders.view` | Overview, order list and details, notes, tracking and packing slips |
+| `orders.status` | Single and bulk order status changes (the store may email customers) |
+| `orders.notes` | Private, staff-only order notes |
+| `orders.notify` | Customer-facing notes and tracking messages (may be emailed) |
+| `orders.shipments` | Adding and removing shipment tracking |
+| `products.view` | Products, categories, attributes, variations, reviews and stock levels |
+| `products.edit` | Creating and editing products, categories, attributes, variations; review moderation |
+| `inventory.edit` | Stock quantities, stock status, backorders, enabling stock management |
+| `customers.view` | Registered customers |
+| `reports.view` | Order and inventory reports and CSV exports |
+| `settings.view` | Settings: connection, store details, panel preferences, roles |
+
+A customer-facing note or a shipment notification also needs `orders.notify`; a product edit that changes stock fields also needs `inventory.edit`.
 
 ## Tracking and emails
 

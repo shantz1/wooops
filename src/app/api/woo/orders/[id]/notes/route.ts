@@ -1,4 +1,4 @@
-import { authorizeRequest } from "@/lib/request-guard";
+import { authorizeRequest, requirePermissions } from "@/lib/request-guard";
 import { readRequestJson } from "@/lib/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { wooFetch } from "@/lib/woocommerce/client";
@@ -28,6 +28,8 @@ export async function POST(request: NextRequest, { params }: Context) {
       (body.customer_note !== undefined && typeof body.customer_note !== "boolean")) {
     return NextResponse.json({ error: "Provide a valid order ID and a note of up to 5,000 characters." }, { status: 400 });
   }
+  // A customer-facing note is shown to the customer and may be emailed.
+  if (body.customer_note === true) { const notify = requirePermissions(request, ["orders.notify"]); if (notify) return notify; }
   try {
     return NextResponse.json(await wooFetch<WooOrderNote>(`orders/${id}/notes`, {
       method: "POST", body: JSON.stringify({ note: body.note.trim(), customer_note: body.customer_note === true }),

@@ -70,42 +70,112 @@ class KartoDesk_Rest {
 	}
 
 	/**
-	 * Every route requires a user who can manage WooCommerce. WordPress also checks REST nonces for cookies.
+	 * Builds a permission callback. A requirement is a list of permissions (all needed), array( 'any' => list )
+	 * (one needed), or 'signed-in' (any KartoDesk permission). WordPress also checks REST nonces for cookies.
 	 *
-	 * @return bool
+	 * @param array|string $requirement Requirement.
+	 * @return callable
 	 */
-	public static function can_manage() {
-		return current_user_can( 'manage_woocommerce' );
+	private static function permission( $requirement ) {
+		return static function () use ( $requirement ) {
+			if ( 'signed-in' === $requirement ) {
+				return current_user_can( KartoDesk_Access::MENU_CAPABILITY );
+			}
+			if ( isset( $requirement['any'] ) ) {
+				foreach ( $requirement['any'] as $permission ) {
+					if ( KartoDesk_Access::can( $permission ) ) {
+						return true;
+					}
+				}
+				return false;
+			}
+			foreach ( $requirement as $permission ) {
+				if ( ! KartoDesk_Access::can( $permission ) ) {
+					return false;
+				}
+			}
+			return true;
+		};
 	}
 
 	/**
-	 * Registers routes. Paths match the standalone app with the leading `/api/` removed.
+	 * Body-dependent checks, e.g. a customer-facing note also needs the "Notify customers" permission.
+	 *
+	 * @param string $permission Permission key.
+	 * @throws KartoDesk_Error When the current user lacks it.
+	 */
+	private static function require_permission( $permission ) {
+		if ( ! KartoDesk_Access::can( $permission ) ) {
+			throw new KartoDesk_Error( esc_html__( 'Your role does not allow this action.', 'kartodesk-for-woocommerce' ), 403 );
+		}
+	}
+
+	/**
+	 * Product and variation fields that change stock and therefore also need the "Change stock" permission.
+	 *
+	 * @param mixed $fields Submitted fields.
+	 * @return bool
+	 */
+	public static function touches_stock( $fields ) {
+		return is_array( $fields ) && (bool) array_intersect( array_keys( $fields ), array( 'manage_stock', 'stock_quantity', 'stock_status', 'backorders', 'low_stock_amount' ) );
+	}
+
+	/**
+	 * Registers routes. Paths match the standalone app with the leading `/api/` removed; each method names
+	 * its handler and the permissions it requires (src/lib/permissions.ts holds the same table).
 	 */
 	public static function register_routes() {
-		$order = '/woo/orders/(?P<id>[1-9]\d*)';
-		$routes = array(
-			'/timezone'           => array( 'GET' => 'timezone' ),
-			'/settings'           => array( 'GET' => 'settings' ),
-			'/reports'            => array( 'GET' => 'reports' ),
-			'/woo/connection'     => array( 'GET' => 'connection' ),
-			'/woo/products'       => array( 'GET' => 'list_products', 'POST' => 'create_product' ),
-			'/woo/catalog'        => array( 'GET' => 'catalog', 'POST' => 'catalog', 'PATCH' => 'catalog' ),
-			'/woo/products/(?P<id>[1-9]\d*)' => array( 'GET' => 'get_product', 'PATCH' => 'update_stock' ),
-			'/woo/customers'      => array( 'GET' => 'list_customers' ),
-			'/woo/orders'         => array( 'GET' => 'list_orders' ),
-			'/woo/order-statuses' => array( 'GET' => 'order_statuses' ),
-			'/woo/orders/bulk'    => array( 'POST' => 'bulk_status' ),
-			$order                => array( 'GET' => 'get_order', 'PATCH' => 'update_status' ),
-			$order . '/notes'     => array( 'GET' => 'list_notes', 'POST' => 'add_note' ),
-			$order . '/shipments' => array( 'GET' => 'list_shipments', 'POST' => 'add_shipment', 'PATCH' => 'email_shipment', 'DELETE' => 'remove_shipment' ),
+		$order   = '/woo/orders/(?P<id>[1-9]\d*)';
+		$product = '/woo/products/(?P<id>[1-9]\d*)';
+		$routes  = array(
+			'/timezone'           => array( 'GET' => array( 'timezone', 'signed-in' ) ),
+			'/settings'           => array( 'GET' => array( 'settings', 'signed-in' ) ),
+			'/access'             => array(
+				'GET' => array( 'access', array( 'settings.view' ) ),
+				'PUT' => array( 'update_access', array( 'settings.view' ) ),
+			),
+			'/reports'            => array( 'GET' => array( 'reports', array( 'reports.view' ) ) ),
+			'/woo/connection'     => array( 'GET' => array( 'connection', array( 'settings.view' ) ) ),
+			'/woo/products'       => array(
+				'GET'  => array( 'list_products', array( 'products.view' ) ),
+				'POST' => array( 'create_product', array( 'products.edit' ) ),
+			),
+			'/woo/catalog'        => array(
+				'GET'   => array( 'catalog', array( 'products.view' ) ),
+				'POST'  => array( 'catalog', array( 'products.edit' ) ),
+				'PATCH' => array( 'catalog', array( 'products.edit' ) ),
+			),
+			// A product edit or a stock change; the handler checks which permission applies.
+			$product              => array(
+				'GET'   => array( 'get_product', array( 'products.view' ) ),
+				'PATCH' => array( 'update_stock', array( 'any' => array( 'products.edit', 'inventory.edit' ) ) ),
+			),
+			'/woo/customers'      => array( 'GET' => array( 'list_customers', array( 'customers.view' ) ) ),
+			'/woo/orders'         => array( 'GET' => array( 'list_orders', array( 'orders.view' ) ) ),
+			'/woo/order-statuses' => array( 'GET' => array( 'order_statuses', array( 'any' => array( 'orders.view', 'reports.view' ) ) ) ),
+			'/woo/orders/bulk'    => array( 'POST' => array( 'bulk_status', array( 'orders.status' ) ) ),
+			$order                => array(
+				'GET'   => array( 'get_order', array( 'orders.view' ) ),
+				'PATCH' => array( 'update_status', array( 'orders.status' ) ),
+			),
+			$order . '/notes'     => array(
+				'GET'  => array( 'list_notes', array( 'orders.view' ) ),
+				'POST' => array( 'add_note', array( 'orders.notes' ) ),
+			),
+			$order . '/shipments' => array(
+				'GET'    => array( 'list_shipments', array( 'orders.view' ) ),
+				'POST'   => array( 'add_shipment', array( 'orders.shipments' ) ),
+				'PATCH'  => array( 'email_shipment', array( 'orders.notify' ) ),
+				'DELETE' => array( 'remove_shipment', array( 'orders.shipments' ) ),
+			),
 		);
 		foreach ( $routes as $path => $methods ) {
 			$endpoints = array();
-			foreach ( $methods as $method => $callback ) {
+			foreach ( $methods as $method => $definition ) {
 				$endpoints[] = array(
 					'methods'             => $method,
-					'callback'            => self::handler( $callback ),
-					'permission_callback' => array( __CLASS__, 'can_manage' ),
+					'callback'            => self::handler( $definition[0] ),
+					'permission_callback' => self::permission( $definition[1] ),
 				);
 			}
 			register_rest_route( self::REST_NAMESPACE, $path, $endpoints );
@@ -207,8 +277,66 @@ class KartoDesk_Rest {
 	public static function timezone() {
 		return new WP_REST_Response( array(
 			'timezone' => wp_timezone_string(), 'timezone_warning' => null,
-			'access' => array( 'role' => 'admin' ),
+			'access' => self::current_access(),
 		) );
+	}
+
+	/**
+	 * The signed-in user's role and KartoDesk permissions.
+	 *
+	 * @return array
+	 */
+	private static function current_access() {
+		$user  = wp_get_current_user();
+		$slug  = $user->roles ? (string) reset( $user->roles ) : '';
+		$names = wp_roles()->get_names();
+		return array(
+			'role'        => $slug,
+			'role_label'  => isset( $names[ $slug ] ) ? translate_user_role( $names[ $slug ] ) : $slug,
+			'name'        => $user->display_name,
+			'permissions' => KartoDesk_Access::current_permissions(),
+		);
+	}
+
+	/**
+	 * Roles and their permissions for Settings > Access.
+	 *
+	 * @return array
+	 */
+	private static function access_rules() {
+		return array(
+			'editable' => KartoDesk_Access::can_edit_roles(),
+			'source'   => 'wordpress',
+			'roles'    => KartoDesk_Access::roles(),
+			'logins'   => array(),
+		);
+	}
+
+	/**
+	 * GET /access — which role has which permission.
+	 *
+	 * @return WP_REST_Response
+	 */
+	public static function access() {
+		return new WP_REST_Response( self::access_rules() );
+	}
+
+	/**
+	 * PUT /access — set one role's permissions. Only users who can manage the site may change roles.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public static function update_access( WP_REST_Request $request ) {
+		if ( ! KartoDesk_Access::can_edit_roles() ) {
+			return self::error( esc_html__( 'Only administrators can change role permissions.', 'kartodesk-for-woocommerce' ), 403 );
+		}
+		$permissions = $request->get_param( 'permissions' );
+		$result      = KartoDesk_Access::update_role( $request->get_param( 'role' ), is_array( $permissions ) ? array_values( $permissions ) : null );
+		if ( is_wp_error( $result ) ) {
+			return self::error( esc_html( $result->get_error_message() ), 400 );
+		}
+		return new WP_REST_Response( self::access_rules() );
 	}
 
 	public static function settings() {
@@ -222,7 +350,11 @@ class KartoDesk_Rest {
 				'timezone_warning' => null,
 				'configured'       => true,
 				'store_url'        => home_url(),
-				'access'           => array( 'protected' => true, 'session_ready' => true ),
+				'access'           => array_merge(
+					array( 'protected' => true, 'session_ready' => true, 'two_factor' => false ),
+					self::current_access(),
+					array( 'rules' => KartoDesk_Access::can( 'settings.view' ) ? self::access_rules() : null )
+				),
 				'store'            => array(
 					'currency'           => get_woocommerce_currency(),
 					'decimal_places'     => (string) wc_get_price_decimals(),
@@ -418,6 +550,9 @@ class KartoDesk_Rest {
 		$customer_note = $request->get_param( 'customer_note' );
 		if ( ! is_string( $note ) || '' === trim( $note ) || mb_strlen( $note ) > 5000 || ( null !== $customer_note && ! is_bool( $customer_note ) ) ) {
 			return self::error( __( 'Provide a valid order ID and a note of up to 5,000 characters.', 'kartodesk-for-woocommerce' ), 400 );
+		}
+		if ( true === $customer_note ) {
+			self::require_permission( 'orders.notify' );
 		}
 		list( $created ) = self::wc(
 			'POST',
@@ -619,6 +754,9 @@ class KartoDesk_Rest {
 			( null === $notify || is_bool( $notify ) );
 		if ( ! $valid ) {
 			return self::error( __( 'Provide a carrier, tracking number, and valid optional HTTPS link and date.', 'kartodesk-for-woocommerce' ), 400 );
+		}
+		if ( true === $notify ) {
+			self::require_permission( 'orders.notify' );
 		}
 
 		$order                     = self::load_order( $id );

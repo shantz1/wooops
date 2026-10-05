@@ -44,7 +44,7 @@ class KartoDesk_Admin {
 		self::$hook = add_menu_page(
 			__( 'KartoDesk', 'kartodesk-for-woocommerce' ),
 			__( 'KartoDesk', 'kartodesk-for-woocommerce' ),
-			'manage_woocommerce',
+			KartoDesk_Access::MENU_CAPABILITY,
 			self::PAGE,
 			array( __CLASS__, 'render' ),
 			'dashicons-clipboard',

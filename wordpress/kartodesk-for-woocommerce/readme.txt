@@ -4,7 +4,7 @@ Tags: woocommerce, orders, shipment tracking, order notes, fulfilment
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.5
+Stable tag: 0.1.6
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -28,7 +28,7 @@ KartoDesk uses WooCommerce's own REST API inside your site as the signed-in user
 
 = Who can use it =
 
-Users with the `manage_woocommerce` capability (Shop managers and Administrators). WooCommerce's normal permission checks also apply to every change.
+Administrators always have full access, and Shop managers start with full access. Under KartoDesk > Settings, administrators choose what each other role can do: view orders, change order status, add private notes, notify customers, manage shipment tracking, view products, edit products, change stock, view customers, view reports and open settings. Permissions are standard WordPress capabilities (prefixed `kartodesk_`), so role-editor plugins can manage them as well. WooCommerce's own permission checks still apply to every request.
 
 = Emails =
 
@@ -72,6 +72,11 @@ Products, simple product creation, stock, registered customers, order and invent
 KartoDesk does not track users or send telemetry. Its own scripts and styles load locally; product images can use the store's image or CDN URLs. It displays customer details that WooCommerce already stores, only to users who can manage WooCommerce.
 
 == Changelog ==
+
+= 0.1.6 =
+* Add permission-based access: choose per WordPress role who can view orders, change status, add notes, notify customers, manage tracking, view or edit products, change stock, view customers, view reports and open settings.
+* Administrators always keep full access; Shop managers keep full access by default.
+* Remove KartoDesk capabilities from all roles when the plugin is deleted.
 
 = 0.1.5 =
 * Add a product editor for descriptions, pricing, image URLs and galleries, stock, shipping and related products.

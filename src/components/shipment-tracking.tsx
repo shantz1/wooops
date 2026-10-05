@@ -25,7 +25,9 @@ type Feedback = { tone: "success" | "warning" | "error" | "info"; message: strin
 const emailCaveat = "Store accepted the customer note; delivery depends on its Customer note email setting and the store's mail service.";
 
 export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { orderId: string; customerEmail?: string; onNotesChanged?: () => void }) {
-  const { canWrite } = usePanelPreferences();
+  const { can } = usePanelPreferences();
+  const canWrite = can("orders.shipments");
+  const canNotify = can("orders.notify");
   const endpoint = `/api/woo/orders/${orderId}/shipments`;
   const { data, setData, error: loadError, loading, reload } = useRemote<ShipmentResponse>(endpoint, "Could not load shipments.");
   const shipments = data?.shipments;
@@ -77,7 +79,7 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
     void mutate(async () => {
       const result = await fetchJson<ShipmentResponse>(endpoint, {
         method: "POST",
-        json: { carrier, tracking_number: number, tracking_url: link, shipped_at: date, notify_customer: notify && Boolean(customerEmail) },
+        json: { carrier, tracking_number: number, tracking_url: link, shipped_at: date, notify_customer: notify && canNotify && Boolean(customerEmail) },
       });
       setData({ shipments: result.shipments || [] });
       setCarrier(""); setNumber(""); setLink(""); setLinkEdited(false); setDate(""); setNotify(false);
@@ -135,13 +137,13 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
               {shipment.tracking_url && <a href={shipment.tracking_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm underline underline-offset-2">Track package <ExternalLink className="size-3" aria-hidden="true" /></a>}
             </div>
             <div className="flex gap-2">
-              {customerEmail && <button type="button" disabled={!canWrite || saving} onClick={() => emailCustomer(shipment)} className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs disabled:opacity-50"><Mail className="size-3" aria-hidden="true" />Email customer</button>}
+              {customerEmail && canNotify && <button type="button" disabled={saving} onClick={() => emailCustomer(shipment)} className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs disabled:opacity-50"><Mail className="size-3" aria-hidden="true" />Email customer</button>}
               <button type="button" disabled={!canWrite || saving} onClick={() => removeShipment(shipment)} aria-label={`Remove tracking number ${shipment.tracking_number}`} className="rounded-md border p-1.5 text-destructive disabled:opacity-50"><Trash2 className="size-4" aria-hidden="true" /></button>
             </div>
           </li>)}
         </ul> : <p className="mt-5 text-sm text-muted-foreground">No tracking recorded for this order yet.</p>}
 
-      {feedback && <Notice tone={feedback.tone} className="mt-4" action={feedback.retryEmailFor && customerEmail
+      {feedback && <Notice tone={feedback.tone} className="mt-4" action={feedback.retryEmailFor && customerEmail && canNotify
         ? <RetryButton onRetry={() => emailCustomer(feedback.retryEmailFor!)} busy={saving} label="Try the email again" /> : undefined}>
         {feedback.message}
       </Notice>}
@@ -166,12 +168,12 @@ export function ShipmentTracking({ orderId, customerEmail, onNotesChanged }: { o
           </label>
         </div>
         <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" checked={notify && Boolean(customerEmail)} disabled={!customerEmail} onChange={event => setNotify(event.target.checked)} className="mt-1" />
+          <input type="checkbox" checked={notify && canNotify && Boolean(customerEmail)} disabled={!customerEmail || !canNotify} onChange={event => setNotify(event.target.checked)} className="mt-1" />
           <span>Also add a customer-facing tracking note{customerEmail ? <>, which Store may email to <span className="break-all">{customerEmail}</span></> : " (no billing email on this order, so no email is possible)"}</span>
         </label>
         <p className="text-xs text-muted-foreground">Email depends on Store&apos;s Customer note email being enabled and the store being able to send mail. Delivery cannot be confirmed from here.</p>
         <button disabled={saving || !shipments} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
-          {saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />} Add shipment{notify && customerEmail ? " and notify customer" : ""}
+          {saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />} Add shipment{notify && canNotify && customerEmail ? " and notify customer" : ""}
         </button>
       </form>}
     </section>

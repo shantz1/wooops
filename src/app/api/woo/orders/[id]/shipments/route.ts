@@ -1,4 +1,4 @@
-import { authorizeRequest } from "@/lib/request-guard";
+import { authorizeRequest, requirePermissions } from "@/lib/request-guard";
 import { readRequestJson } from "@/lib/request-body";
 import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
@@ -96,6 +96,7 @@ export async function POST(request: NextRequest, { params }: Context) {
       (body.notify_customer !== undefined && typeof body.notify_customer !== "boolean")) {
     return NextResponse.json({ error: "Provide a carrier, tracking number, and valid optional HTTPS link and date." }, { status: 400 });
   }
+  if (body.notify_customer === true) { const notify = requirePermissions(request, ["orders.notify"]); if (notify) return notify; }
   let order: OrderWithMeta;
   let saved: Shipment[];
   let shipment: Shipment;

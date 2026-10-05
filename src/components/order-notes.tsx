@@ -17,7 +17,10 @@ type Audience = "private" | "customer";
  * WooCommerce emails them when its "Customer note" email is enabled. Acceptance is not proof of delivery.
  */
 export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: string; customerEmail?: string; refreshKey: number }) {
-  const { timeZone, canWrite } = usePanelPreferences();
+  const { timeZone, can } = usePanelPreferences();
+  const canPrivate = can("orders.notes");
+  const canCustomer = canPrivate && can("orders.notify");
+  const canWrite = canPrivate || canCustomer;
   const endpoint = `/api/woo/orders/${orderId}/notes`;
   const { data: notes, error, loading, reload } = useRemote<WooOrderNote[]>(endpoint, "Could not load notes.", refreshKey);
   const [text, setText] = useState("");
@@ -26,7 +29,8 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
   const [result, setResult] = useState<{ tone: "success" | "error" | "warning"; message: string } | null>(null);
   const inFlight = useRef(false);
 
-  const toCustomer = audience === "customer";
+  // Customer-facing notes require both note creation and customer notification permission.
+  const toCustomer = canPrivate ? audience === "customer" && canCustomer : canCustomer;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,11 +79,11 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
         <fieldset className="grid gap-2 sm:grid-cols-2">
           <legend className="sr-only">Who can see this note</legend>
           <label className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${!toCustomer ? "border-foreground/40 bg-muted/40" : ""}`}>
-            <input type="radio" name="note-audience" value="private" checked={!toCustomer} onChange={() => setAudience("private")} className="mt-1" />
+            <input type="radio" name="note-audience" value="private" checked={!toCustomer} disabled={!canPrivate} onChange={() => setAudience("private")} className="mt-1" />
             <span><span className="flex items-center gap-1 font-medium"><Lock className="size-3.5" aria-hidden="true" />Private</span><span className="text-xs text-muted-foreground">Staff only. Not emailed.</span></span>
           </label>
           <label className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${toCustomer ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30" : ""}`}>
-            <input type="radio" name="note-audience" value="customer" checked={toCustomer} onChange={() => setAudience("customer")} className="mt-1" />
+            <input type="radio" name="note-audience" value="customer" checked={toCustomer} disabled={!canCustomer} onChange={() => setAudience("customer")} className="mt-1" />
             <span><span className="flex items-center gap-1 font-medium"><Mail className="size-3.5" aria-hidden="true" />To customer</span><span className="text-xs text-muted-foreground">Visible to the customer and may be emailed.</span></span>
           </label>
         </fieldset>

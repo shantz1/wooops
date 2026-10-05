@@ -14,7 +14,8 @@ import type { WooProduct } from "@/types/woocommerce";
 type ProductsResponse = { configured?: boolean; products: WooProduct[]; total: number; pages: number };
 
 export function ProductsTable({ inventory = false, productType }: { inventory?: boolean; productType?: string }) {
-  const { canWrite } = usePanelPreferences();
+  const { can } = usePanelPreferences();
+  const canWrite = can("inventory.edit");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [stockFilter, setStockFilter] = useState("all");

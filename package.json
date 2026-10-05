@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test \"test/**/*.test.mjs\"",
-    "test:integration": "node --test test/integration/shipments.mjs",
+    "test:integration": "node --test test/integration/shipments.mjs test/integration/permissions.mjs",
     "build:wp": "vite build -c wordpress/vite.config.mts",
     "setup:password": "node scripts/password-hash.mjs",
     "setup:2fa": "node scripts/setup-2fa.mjs"

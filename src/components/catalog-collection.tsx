@@ -10,7 +10,8 @@ import { LoadingState, ErrorState, EmptyState, Notice } from "@/components/ui/fe
 import type { CatalogItem, CatalogResponse, CatalogResource } from "@/lib/catalog";
 
 export function CatalogCollection({ resource, parent, product }: { resource: CatalogResource; parent?: number; product?: number }) {
-  const { canWrite } = usePanelPreferences();
+  const { can } = usePanelPreferences();
+  const canWrite = can("products.edit");
   const [page, setPage] = useState(1), [search, setSearch] = useState("");
   const query = new URLSearchParams({ resource, page: String(page), search: useDebouncedValue(search) });
   if (parent) query.set("parent", String(parent)); if (product) query.set("product", String(product));

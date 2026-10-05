@@ -66,9 +66,15 @@ trait KartoDesk_Catalog {
 
 	/** Update a non-negative integer stock quantity, matching the standalone behavior. */
 	public static function update_stock( WP_REST_Request $request ) {
+		// A product edit needs "Create and edit products" (and "Change stock" when it changes stock); a stock update needs "Change stock".
 		if ( $request->has_param( 'details' ) ) {
+			self::require_permission( 'products.edit' );
+			if ( self::touches_stock( $request->get_param( 'details' ) ) ) {
+				self::require_permission( 'inventory.edit' );
+			}
 			return self::update_product_details( $request );
 		}
+		self::require_permission( 'inventory.edit' );
 		$quantity = $request->get_param( 'stock_quantity' );
 		$enable = $request->get_param( 'enable_stock_management' );
 		if ( ! is_int( $quantity ) || $quantity < 0 || $quantity > 9007199254740991 || ( null !== $enable && ! is_bool( $enable ) ) ) {
@@ -188,6 +194,9 @@ trait KartoDesk_Catalog {
 			if ( isset( $body[ $key ] ) && ( ! is_string( $body[ $key ] ) || strlen( $body[ $key ] ) > 30 || ( '' !== $body[ $key ] && ! preg_match( '/^\d+(?:\.\d{1,6})?$/', $body[ $key ] ) ) ) ) { return self::error( esc_html__( 'Invalid price.', 'kartodesk-for-woocommerce' ), 400 ); }
 		}
 		if ( isset( $body['stock_quantity'] ) && ( ! is_int( $body['stock_quantity'] ) || $body['stock_quantity'] < 0 ) ) { return self::error( esc_html__( 'Invalid stock quantity.', 'kartodesk-for-woocommerce' ), 400 ); }
+		if ( self::touches_stock( $body ) ) {
+			self::require_permission( 'inventory.edit' );
+		}
 		if ( 'variations' === $resource && 'POST' === $method ) {
 			self::check_variation_options( (int) $parent, $body['attributes'] ?? null, $path );
 		}
@@ -244,6 +253,9 @@ trait KartoDesk_Catalog {
 			! is_string( $image ) || ! in_array( $status, array( 'draft', 'publish' ), true ) || ! is_bool( $managed ) ||
 			( $managed && ( ! is_int( $quantity ) || $quantity < 0 || $quantity > 9007199254740991 ) ) ) {
 			return self::error( esc_html__( 'Invalid simple product details.', 'kartodesk-for-woocommerce' ), 400 );
+		}
+		if ( true === $managed ) {
+			self::require_permission( 'inventory.edit' );
 		}
 		$image = trim( $image );
 		$images = array();

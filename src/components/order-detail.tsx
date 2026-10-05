@@ -53,7 +53,8 @@ function AddressCard({ title, address, empty, extra }: { title: string; address:
 }
 
 function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooOrder) => void }) {
-  const { canWrite } = usePanelPreferences();
+  const { can } = usePanelPreferences();
+  const canWrite = can("orders.status");
   const [status, setStatus] = useState<WooOrderStatus>(order.status);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ tone: "success" | "error"; message: string } | null>(null);

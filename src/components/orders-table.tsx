@@ -20,7 +20,8 @@ type OrdersResponse = { configured?: boolean; orders: WooOrder[]; total: number;
 const perPage = 20;
 
 export function OrdersTable() {
-  const { timeZone, canWrite } = usePanelPreferences();
+  const { timeZone, can } = usePanelPreferences();
+  const canWrite = can("orders.status");
   const [selected, setSelected] = useState<number[]>([]);
   const [search, setSearch] = useState(defaultListState.search);
   const [status, setStatus] = useState(defaultListState.status);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authorizeRequest } from "@/lib/request-guard";
+import { authorizeRequest, requirePermissions } from "@/lib/request-guard";
+import { touchesStock } from "@/lib/permissions";
 import { readRequestJson } from "@/lib/request-body";
 import { catalogPath, validCatalogWrite } from "@/lib/catalog";
 import { wooFetchWithHeaders, wooFetch } from "@/lib/woocommerce/client";
@@ -32,6 +33,7 @@ async function write(request: NextRequest, creating: boolean) {
   const path = catalogPath(resource, params.get("parent"));
   const body = await readRequestJson(request).catch(() => null);
   if (!path || !validCatalogWrite(resource, body, creating) || !creating && !isId(params.get("id"))) return NextResponse.json({ error: "Invalid catalogue details." }, { status: 400 });
+  if (touchesStock(body)) { const stock = requirePermissions(request, ["inventory.edit"]); if (stock) return stock; }
   try {
     if (resource === "variations" && creating) {
       const product = await wooFetch<ProductDetails>("products/" + params.get("parent"));

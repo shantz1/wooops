@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Fragment } from "react";
 import { BarChart3, Boxes, LayoutDashboard, Loader2, LogOut, Menu, Package, Settings, ShoppingCart, Users, X } from "lucide-react";
 import { usePanelPreferences } from "@/components/panel-preferences";
+import { screenAllowed } from "@/lib/permissions";
 import { isAvailable as available, wordpressRuntime } from "@/lib/runtime";
 
 const navigation = [
@@ -24,7 +25,15 @@ function isActive(pathname: string, href: string) {
   return pathname === href || (href !== "/" && pathname.startsWith(href));
 }
 
+/** A screen appears in navigation when this runtime has it and the signed-in role may open it. */
+function useVisibleScreens() {
+  const { access } = usePanelPreferences();
+  const granted = access?.permissions ?? [];
+  return (href: string) => available(href) && screenAllowed(href, granted);
+}
+
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  const visible = useVisibleScreens();
   const link = (href: string, label: string, Icon: typeof Settings) => {
     const active = isActive(pathname, href);
     return (
@@ -38,8 +47,8 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
   return (
     <>
       <p className="px-3 pb-2 pt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Workspace</p>
-      {navigation.filter(item => available(item.href)).map(item => <Fragment key={item.href}>{link(item.href, item.label, item.icon)}{item.href === "/products" && pathname.startsWith("/products") && <div className="ml-5 space-y-1 border-l pl-2">{[["/products", "Catalogue"], ["/products/categories", "Categories"], ["/products/attributes", "Attributes"], ["/products/variations", "Variations"], ["/products/reviews", "Reviews"]].map(([href, label]) => <Link key={href} href={href} onClick={onNavigate} aria-current={pathname === href ? "page" : undefined} className={"block rounded-lg px-3 py-2 text-xs " + focusRing + (pathname === href ? " bg-primary/10 font-semibold text-primary" : " text-muted-foreground hover:bg-muted")}>{label}</Link>)}</div>}</Fragment>)}
-      {available("/settings") && <>
+      {navigation.filter(item => visible(item.href)).map(item => <Fragment key={item.href}>{link(item.href, item.label, item.icon)}{item.href === "/products" && pathname.startsWith("/products") && <div className="ml-5 space-y-1 border-l pl-2">{[["/products", "Catalogue"], ["/products/categories", "Categories"], ["/products/attributes", "Attributes"], ["/products/variations", "Variations"], ["/products/reviews", "Reviews"]].map(([href, label]) => <Link key={href} href={href} onClick={onNavigate} aria-current={pathname === href ? "page" : undefined} className={"block rounded-lg px-3 py-2 text-xs " + focusRing + (pathname === href ? " bg-primary/10 font-semibold text-primary" : " text-muted-foreground hover:bg-muted")}>{label}</Link>)}</div>}</Fragment>)}
+      {visible("/settings") && <>
         <p className="px-3 pb-2 pt-7 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">System</p>
         {link("/settings", "Settings", Settings)}
       </>}
@@ -108,8 +117,30 @@ function EmbeddedShell({ pathname, children }: { pathname: string; children: Rea
           </button>
           <Brand />
         </div>
-        <main id="main" tabIndex={-1} className="mx-auto max-w-[1400px] p-4 outline-none sm:p-6">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto max-w-[1400px] p-4 outline-none sm:p-6"><ScreenGate pathname={pathname}>{children}</ScreenGate></main>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Shown instead of a screen the signed-in role cannot open. The server refuses the data anyway; this
+ * explains why and links to the screens the role can use.
+ */
+function ScreenGate({ pathname, children }: { pathname: string; children: React.ReactNode }) {
+  const { access, accessLoaded } = usePanelPreferences();
+  const visible = useVisibleScreens();
+  if (!accessLoaded || screenAllowed(pathname, access?.permissions ?? [])) return <>{children}</>;
+  const screens = [...navigation, { href: "/settings", label: "Settings", icon: Settings }].filter(item => item.href !== pathname && visible(item.href));
+  return (
+    <div className="mx-auto max-w-xl rounded-xl border bg-background p-6 shadow-sm">
+      <h1 className="text-lg font-semibold">You don&apos;t have access to this screen</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Your role{access?.role_label ? ` (${access.role_label})` : ""} does not include this permission. Ask an administrator if you need it.
+      </p>
+      {screens.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{screens.map(item => (
+        <Link key={item.href} href={item.href} className={`rounded-lg border px-3 py-2 text-sm hover:bg-muted ${focusRing}`}>{item.label}</Link>
+      ))}</div>}
     </div>
   );
 }
@@ -209,7 +240,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">Store workspace</div>
         </header>
-        <main id="main" tabIndex={-1} className="mx-auto max-w-[1500px] p-4 outline-none sm:p-5 lg:p-8">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto max-w-[1500px] p-4 outline-none sm:p-5 lg:p-8"><ScreenGate pathname={pathname}>{children}</ScreenGate></main>
       </div>
     </div>
   );

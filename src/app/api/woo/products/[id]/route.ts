@@ -1,9 +1,10 @@
-import { authorizeRequest } from "@/lib/request-guard";
+import { authorizeRequest, requirePermissions } from "@/lib/request-guard";
 import { readRequestJson } from "@/lib/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { wooFetch } from "@/lib/woocommerce/client";
 import { wooErrorResponse } from "@/lib/woocommerce/errors";
 import { isId } from "@/lib/woocommerce/validation";
+import { touchesStock } from "@/lib/permissions";
 import type { WooProduct } from "@/types/woocommerce";
 import { validProductDetails, type ProductDetails } from "@/lib/product-details";
 
@@ -23,6 +24,11 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if (denied) return denied;
   const { id } = await params;
   const body = await readRequestJson(request).catch(() => null);
+  // A product edit needs products.edit (and inventory.edit when it changes stock); a stock update needs inventory.edit.
+  const needed = requirePermissions(request, body?.details !== undefined
+    ? ["products.edit", ...(touchesStock(body.details) ? ["inventory.edit" as const] : [])]
+    : ["inventory.edit"]);
+  if (needed) return needed;
   if (body?.details !== undefined) {
     if (!isId(id) || !validProductDetails(body.details, process.env.WOOCOMMERCE_URL) ||
         typeof body.modified !== "string" || body.modified.length > 40 || Object.keys(body).some(key => !["details", "modified"].includes(key))) {
