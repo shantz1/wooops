@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { wooFetch } from "@/lib/woocommerce/client";
 import { wooErrorResponse } from "@/lib/woocommerce/errors";
 import { clearOrderStatuses, isSettableStatus } from "@/lib/woocommerce/order-statuses";
+import { parseOrderUpdate } from "@/lib/woocommerce/order-update";
 import { isId } from "@/lib/woocommerce/validation";
 
 type Context = { params: Promise<{ id: string }> };
@@ -22,12 +23,12 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if (denied) return denied;
   const { id } = await params;
   const body = await readRequestJson(request).catch(() => null);
-  if (!isId(id) || !(await isSettableStatus(body?.status))) {
-    return NextResponse.json({ error: "Invalid order ID or status." }, { status: 400 });
-  }
+  if (!isId(id)) return NextResponse.json({ error: "Invalid order ID or status." }, { status: 400 });
+  const parsed = await parseOrderUpdate(body, isSettableStatus);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
   try {
-    const order = await wooFetch(`orders/${id}`, { method: "PUT", body: JSON.stringify({ status: body.status }) });
-    clearOrderStatuses();
+    const order = await wooFetch(`orders/${id}`, { method: "PUT", body: JSON.stringify(parsed.update) });
+    if (parsed.update.status) clearOrderStatuses();
     return NextResponse.json(order);
   }
   catch (error) { return wooErrorResponse(error, "Unable to update order."); }

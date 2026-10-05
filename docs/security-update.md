@@ -20,7 +20,7 @@ This MVP supports one Node process. Put per-client login throttling at the HTTPS
 
 ## KartoDesk installations
 
-Install the new `kartodesk-for-woocommerce-0.1.6.zip` through Plugins > Add New > Upload Plugin and confirm replacing the existing plugin. Its access still comes from WordPress; no environment changes are needed.
+Install the new `kartodesk-for-woocommerce-0.1.7.zip` through Plugins > Add New > Upload Plugin and confirm replacing the existing plugin. Its access still comes from WordPress; no environment changes are needed.
 
 Versions 0.1.1 and newer include local modules for each screen. Use the complete ZIP rather than uploading app.js alone. Keep the earlier 0.1.0 ZIP if you need to roll back.
 

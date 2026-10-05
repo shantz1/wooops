@@ -34,7 +34,7 @@ export function ConnectionStatus() {
         {connected ? <CheckCircle2 className="size-4 text-emerald-600" /> : <XCircle className="size-4 text-destructive" />}
         {connected ? "Connected" : data?.error || "Environment variables are not configured."}
       </div>
-      <button onClick={load} aria-label="Check connection again" className="rounded-md border p-2 hover:bg-muted"><RefreshCw className="size-4" /></button>
+      <button onClick={load} aria-label="Check connection again" className="rounded-md border p-2 hover:bg-accent"><RefreshCw className="size-4" /></button>
     </div>
   );
 }

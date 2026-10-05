@@ -38,7 +38,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
     const active = isActive(pathname, href);
     return (
       <Link key={href} href={href} onClick={onNavigate} aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${focusRing} ${active ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}>
+        className={`flex items-center gap-3 rounded-lg border-l-2 px-3 py-2.5 text-sm transition-colors ${focusRing} ${active ? "border-l-primary font-semibold text-primary" : "border-l-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}>
         <Icon className="size-4" aria-hidden="true" />
         {label}
       </Link>
@@ -47,7 +47,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
   return (
     <>
       <p className="px-3 pb-2 pt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Workspace</p>
-      {navigation.filter(item => visible(item.href)).map(item => <Fragment key={item.href}>{link(item.href, item.label, item.icon)}{item.href === "/products" && pathname.startsWith("/products") && <div className="ml-5 space-y-1 border-l pl-2">{[["/products", "Catalogue"], ["/products/categories", "Categories"], ["/products/attributes", "Attributes"], ["/products/variations", "Variations"], ["/products/reviews", "Reviews"]].map(([href, label]) => <Link key={href} href={href} onClick={onNavigate} aria-current={pathname === href ? "page" : undefined} className={"block rounded-lg px-3 py-2 text-xs " + focusRing + (pathname === href ? " bg-primary/10 font-semibold text-primary" : " text-muted-foreground hover:bg-muted")}>{label}</Link>)}</div>}</Fragment>)}
+      {navigation.filter(item => visible(item.href)).map(item => <Fragment key={item.href}>{link(item.href, item.label, item.icon)}{item.href === "/products" && pathname.startsWith("/products") && <div className="ml-5 space-y-1 border-l pl-2">{[["/products", "Catalogue"], ["/products/categories", "Categories"], ["/products/attributes", "Attributes"], ["/products/variations", "Variations"], ["/products/reviews", "Reviews"]].map(([href, label]) => <Link key={href} href={href} onClick={onNavigate} aria-current={pathname === href ? "page" : undefined} className={"block rounded-lg px-3 py-2 text-xs border-l-2 " + focusRing + (pathname === href ? " border-l-primary font-semibold text-primary" : " border-l-transparent text-muted-foreground hover:bg-accent")}>{label}</Link>)}</div>}</Fragment>)}
       {visible("/settings") && <>
         <p className="px-3 pb-2 pt-7 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">System</p>
         {link("/settings", "Settings", Settings)}
@@ -86,7 +86,7 @@ function EmbeddedShell({ pathname, children }: { pathname: string; children: Rea
   }, []);
 
   return (
-    <div className="flex min-h-[calc(100vh-160px)] bg-muted/30 text-foreground">
+    <div className="flex min-h-[calc(100vh-160px)] text-foreground">
       <a href="#main" onClick={skipToContent} className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm focus:not-sr-only focus:absolute focus:left-3 focus:top-3">Skip to content</a>
       <aside className="hidden w-60 shrink-0 border-r bg-background lg:block">
         <div className="sticky top-8">
@@ -101,7 +101,7 @@ function EmbeddedShell({ pathname, children }: { pathname: string; children: Rea
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b px-5">
             <Brand />
-            <button type="button" onClick={closeMenu} aria-label="Close navigation" className={`rounded-md p-2 hover:bg-muted ${focusRing}`}>
+            <button type="button" onClick={closeMenu} aria-label="Close navigation" className={`rounded-md p-2 hover:bg-accent ${focusRing}`}>
               <X className="size-5" aria-hidden="true" />
             </button>
           </div>
@@ -112,7 +112,7 @@ function EmbeddedShell({ pathname, children }: { pathname: string; children: Rea
       <div className="min-w-0 flex-1">
         <div className="flex h-14 items-center gap-2 border-b bg-background px-4 lg:hidden">
           <button type="button" onClick={() => { menu.current?.showModal(); setMenuOpen(true); }} aria-label="Open KartoDesk navigation"
-            aria-expanded={menuOpen} aria-controls="kartodesk-navigation" className={`-ml-1 rounded-md p-2 hover:bg-muted ${focusRing}`}>
+            aria-expanded={menuOpen} aria-controls="kartodesk-navigation" className={`-ml-1 rounded-md p-2 hover:bg-accent ${focusRing}`}>
             <Menu className="size-5" aria-hidden="true" />
           </button>
           <Brand />
@@ -139,7 +139,7 @@ function ScreenGate({ pathname, children }: { pathname: string; children: React.
         Your role{access?.role_label ? ` (${access.role_label})` : ""} does not include this permission. Ask an administrator if you need it.
       </p>
       {screens.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{screens.map(item => (
-        <Link key={item.href} href={item.href} className={`rounded-lg border px-3 py-2 text-sm hover:bg-muted ${focusRing}`}>{item.label}</Link>
+        <Link key={item.href} href={item.href} className={`rounded-lg border px-3 py-2 text-sm hover:bg-accent ${focusRing}`}>{item.label}</Link>
       ))}</div>}
     </div>
   );
@@ -178,7 +178,7 @@ function PasswordSignOut() {
           </div>
         </div>
         <button type="button" onClick={signOut} disabled={busy} aria-label="Sign out" title="Sign out"
-          className={`rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 ${focusRing}`}>
+          className={`rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50 ${focusRing}`}>
           {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <LogOut className="size-4" aria-hidden="true" />}
         </button>
       </div>
@@ -205,7 +205,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (wordpressRuntime()) return <EmbeddedShell pathname={pathname}>{children}</EmbeddedShell>;
 
   return (
-    <div className="min-h-screen bg-muted/30 text-foreground">
+    <div className="min-h-screen text-foreground">
       <a href="#main" className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to content</a>
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r bg-background lg:flex lg:flex-col">
         <div className="flex h-16 items-center border-b px-5"><Brand /></div>
@@ -220,7 +220,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b px-5">
             <Brand />
-            <button type="button" onClick={closeMenu} aria-label="Close navigation" className={`rounded-md p-2 hover:bg-muted ${focusRing}`}>
+            <button type="button" onClick={closeMenu} aria-label="Close navigation" className={`rounded-md p-2 hover:bg-accent ${focusRing}`}>
               <X className="size-5" aria-hidden="true" />
             </button>
           </div>
@@ -233,12 +233,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-3 border-b bg-background/95 px-4 backdrop-blur sm:px-5 lg:px-8">
           <div className="flex min-w-0 items-center gap-2">
             <button type="button" onClick={openMenu} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="mobile-navigation"
-              className={`-ml-1 rounded-md p-2 hover:bg-muted lg:hidden ${focusRing}`}>
+              className={`-ml-1 rounded-md p-2 hover:bg-accent lg:hidden ${focusRing}`}>
               <Menu className="size-5" aria-hidden="true" />
             </button>
             <div className="min-w-0"><p className="truncate text-sm font-medium">Operations</p><p className="truncate text-xs text-muted-foreground">Your store, in focus</p></div>
           </div>
-          <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">Store workspace</div>
+          <div className="rounded-full border border-primary/20 px-3 py-1 text-xs font-medium text-primary">Store workspace</div>
         </header>
         <main id="main" tabIndex={-1} className="mx-auto max-w-[1500px] p-4 outline-none sm:p-5 lg:p-8"><ScreenGate pathname={pathname}>{children}</ScreenGate></main>
       </div>

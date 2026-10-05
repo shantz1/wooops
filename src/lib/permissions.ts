@@ -26,6 +26,16 @@ export const permissionList = [
     description: "Order and inventory reports and CSV exports." },
   { key: "settings.view", capability: "kartodesk_manage_settings", group: "System", label: "Open settings",
     description: "Connection status, store details and panel preferences." },
+  { key: "orders.refund", capability: "kartodesk_refund_orders", group: "Orders", label: "Issue refunds",
+    description: "Record refunds on orders." },
+  { key: "orders.delete", capability: "kartodesk_delete_orders", group: "Orders", label: "Delete orders",
+    description: "Permanently delete orders." },
+  { key: "discounts.manage", capability: "kartodesk_manage_discounts", group: "Catalogue", label: "Manage discounts",
+    description: "View, create, edit and delete discount codes." },
+  { key: "customers.edit", capability: "kartodesk_edit_customers", group: "Customers", label: "Edit customers",
+    description: "Create and edit registered customers." },
+  { key: "tools.run", capability: "kartodesk_run_tools", group: "System", label: "Run maintenance tools",
+    description: "Clear caches, rebuild lookup tables and other store maintenance." },
 ] as const;
 
 export type Permission = (typeof permissionList)[number]["key"];
@@ -91,6 +101,7 @@ const rules: Rule[] = [
   { pattern: /^\/api\/woo\/orders\/bulk$/, methods: { POST: ["orders.status"] } },
   { pattern: /^\/api\/woo\/orders\/\d+$/, methods: { GET: ["orders.view"], PATCH: ["orders.status"], DELETE: ["orders.status"] } },
   { pattern: /^\/api\/woo\/orders\/\d+\/notes$/, methods: { GET: ["orders.view"], POST: ["orders.notes"] } },
+  { pattern: /^\/api\/woo\/orders\/\d+\/refunds$/, methods: { GET: ["orders.view"], POST: ["orders.refund"] } },
   { pattern: /^\/api\/woo\/orders\/\d+\/shipments$/, methods: { GET: ["orders.view"], POST: ["orders.shipments"], PATCH: ["orders.notify"], DELETE: ["orders.shipments"] } },
   { pattern: /^\/api\/woo\/products$/, methods: { GET: ["products.view"], POST: ["products.edit"] } },
   // PATCH is a product edit or a stock change; the handler decides which permission applies.

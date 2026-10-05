@@ -61,7 +61,7 @@ export function ProductsTable({ inventory = false, productType }: { inventory?: 
       {!data ? (loading ? <LoadingState label="Loading products…" /> : <ErrorState message={error || "Unable to load products."} onRetry={reload} busy={loading} />)
         : items.length === 0 ? <EmptyState icon={Package} title="No products found" />
         : <div className={`overflow-x-auto transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}><table className="w-full text-sm">
-          <thead className="border-b bg-muted/30 text-left text-xs text-muted-foreground"><tr><th className="px-5 py-3">Product</th><th className="px-5 py-3">SKU</th><th className="px-5 py-3">{inventory ? "Tracking" : "Price"}</th><th className="px-5 py-3">{inventory ? "Quantity" : "Type"}</th><th className="px-5 py-3">{inventory ? "Availability" : "Publishing"}</th></tr></thead>
+          <thead className="border-b font-medium text-left text-xs text-muted-foreground"><tr><th className="px-5 py-3">Product</th><th className="px-5 py-3">SKU</th><th className="px-5 py-3">{inventory ? "Tracking" : "Price"}</th><th className="px-5 py-3">{inventory ? "Quantity" : "Type"}</th><th className="px-5 py-3">{inventory ? "Availability" : "Publishing"}</th></tr></thead>
           <tbody className="divide-y">{items.map(product => <tr key={product.id}>
             <td className="px-5 py-4"><div className="flex min-w-48 items-center gap-3"><ProductThumbnail key={product.images?.[0]?.src || product.id} src={product.images?.[0]?.src} alt={product.images?.[0]?.alt || product.name} /><div><Link href={`/products/${product.id}`} className="font-medium hover:text-primary hover:underline">{product.name}</Link><p className="mt-1 text-xs text-muted-foreground">#{product.id}</p></div></div></td>
             <td className="px-5 py-4 text-muted-foreground">{product.sku || "—"}</td>
@@ -74,7 +74,7 @@ export function ProductsTable({ inventory = false, productType }: { inventory?: 
                 className="h-9 w-28 rounded-md border px-2 disabled:opacity-60" />
               {savingId === product.id && <Loader2 className="size-3.5 animate-spin text-muted-foreground" aria-label="Saving" />}
             </div> : <span className="capitalize">{product.type || "simple"}</span>}</td>
-            <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs capitalize ${inventory && product.stock_status === "outofstock" ? "bg-red-500/10 text-red-600" : inventory && product.stock_status === "onbackorder" ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>{inventory ? product.stock_status.replace("-", " ") : product.status}</span></td>
+            <td className="px-5 py-4"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs capitalize ${inventory && product.stock_status === "outofstock" ? "border-red-300 text-red-700 dark:border-red-700 dark:text-red-300" : inventory && product.stock_status === "onbackorder" ? "border-amber-300 text-amber-800 dark:border-amber-700 dark:text-amber-300" : "border-emerald-300 text-emerald-800 dark:border-emerald-700 dark:text-emerald-300"}`}><span className="size-1.5 rounded-full bg-current" aria-hidden="true" />{inventory ? product.stock_status.replace("-", " ") : product.status}</span></td>
           </tr>)}</tbody>
         </table></div>}
       {data && <ListPagination page={page} pages={data.pages} total={data.total} busy={loading} onPage={setPage} />}

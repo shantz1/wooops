@@ -57,6 +57,6 @@ export function CatalogCollection({ resource, parent, product }: { resource: Cat
       </li>)}</ul>}
       <ListPagination page={page} pages={data.pages} total={data.total} busy={loading} onPage={setPage} />
     </div>}
-    {terms && <section className="space-y-3 rounded-xl border bg-muted/30 p-5"><h2 className="font-semibold">{terms.name} terms</h2><CatalogCollection key={terms.id} resource="terms" parent={terms.id} /></section>}
+    {terms && <section className="space-y-3 rounded-xl border p-5"><h2 className="font-semibold">{terms.name} terms</h2><CatalogCollection key={terms.id} resource="terms" parent={terms.id} /></section>}
   </div>;
 }

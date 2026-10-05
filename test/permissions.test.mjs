@@ -13,6 +13,8 @@ test("every API route used by the panel has a permission rule", () => {
     ["PATCH", "/api/woo/orders/12", ["orders.status"]],
     ["POST", "/api/woo/orders/bulk", ["orders.status"]],
     ["POST", "/api/woo/orders/12/notes", ["orders.notes"]],
+    ["GET", "/api/woo/orders/12/refunds", ["orders.view"]],
+    ["POST", "/api/woo/orders/12/refunds", ["orders.refund"]],
     ["POST", "/api/woo/orders/12/shipments", ["orders.shipments"]],
     ["PATCH", "/api/woo/orders/12/shipments", ["orders.notify"]],
     ["DELETE", "/api/woo/orders/12/shipments", ["orders.shipments"]],
@@ -55,6 +57,22 @@ test("the plugin's capability list matches the shared permission list", () => {
   for (const key of allPermissions) assert.match(woo, new RegExp(`'${key.replace(".", "\\.")}'`), `WooCommerce capabilities listed for ${key}`);
 });
 
+test("new permissions exist and administrators get all of them", () => {
+  assert.equal(allPermissions.length, 16);
+  assert.ok(allPermissions.includes("orders.refund"));
+  assert.ok(allPermissions.includes("orders.delete"));
+  assert.ok(allPermissions.includes("discounts.manage"));
+  assert.ok(allPermissions.includes("customers.edit"));
+  assert.ok(allPermissions.includes("tools.run"));
+  const testHash = "scrypt:131072:8:1:" + "a".repeat(32) + ":" + "b".repeat(64);
+  const valid = parseAccessConfig({ roles: { packer: { label: "Packer", permissions: ["orders.refund", "tools.run"] } },
+    logins: [{ username: "packer", name: "Packer", role: "packer", password_hash: testHash }] });
+  assert.equal(valid.error, null);
+  const identity = identityFor("u-packer", valid.config);
+  assert.ok(identity.permissions.includes("orders.refund"));
+  assert.ok(identity.permissions.includes("tools.run"));
+});
+
 const hash = "scrypt:131072:8:1:" + "a".repeat(32) + ":" + "b".repeat(64);
 
 test("access files are validated strictly", () => {
@@ -69,7 +87,7 @@ test("access files are validated strictly", () => {
   assert.deepEqual(identityFor("admin", valid.config).permissions, allPermissions);
   const failures = [
     { roles: { admin: { permissions: [] } } },
-    { roles: { packer: { permissions: ["orders.delete"] } } },
+    { roles: { packer: { permissions: ["orders.fake"] } } },
     { roles: { "Bad Role": { permissions: [] } } },
     { logins: [{ username: "x", role: "admin", password_hash: hash }] },
     { logins: [{ username: "ravi", role: "ghost", password_hash: hash }] },

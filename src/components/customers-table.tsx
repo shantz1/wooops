@@ -27,7 +27,7 @@ export function CustomersTable() {
       {!data ? (loading ? <LoadingState label="Loading customers…" /> : <ErrorState message={error || "Unable to load customers."} onRetry={reload} busy={loading} />)
         : items.length === 0 ? <EmptyState icon={Users} title="No customers found">Guest checkouts have no customer record and appear only on their orders.</EmptyState>
         : <div className={`overflow-x-auto transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}><table className="w-full text-sm">
-          <thead className="border-b bg-muted/30 text-left text-xs text-muted-foreground"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Email</th><th className="px-5 py-3">Phone</th><th className="px-5 py-3">Orders</th><th className="px-5 py-3">Spent</th></tr></thead>
+          <thead className="border-b font-medium text-left text-xs text-muted-foreground"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Email</th><th className="px-5 py-3">Phone</th><th className="px-5 py-3">Orders</th><th className="px-5 py-3">Spent</th></tr></thead>
           <tbody className="divide-y">{items.map(customer => <tr key={customer.id}>
             <td className="px-5 py-4 font-medium">{customer.first_name} {customer.last_name}</td>
             <td className="px-5 py-4">{customer.email || "—"}</td>

@@ -10,6 +10,7 @@ export interface WooAddress {
 export interface WooLineItem {
   id: number; name: string; product_id?: number; variation_id?: number; quantity: number;
   subtotal: string; subtotal_tax?: string; total: string; total_tax?: string; sku?: string; price?: number | string;
+  taxes?: Array<{ id: number; total: string; subtotal: string }>;
   meta_data?: WooMeta[]; image?: { id: number; src: string };
 }
 export interface WooOrder {

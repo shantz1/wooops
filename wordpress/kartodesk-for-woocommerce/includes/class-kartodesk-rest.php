@@ -45,6 +45,7 @@ class KartoDesk_Rest {
 	const REST_NAMESPACE = 'kartodesk/v1';
 
 	const SHIPMENTS_META_KEY = 'wooops_shipments';
+	const REFUND_META_KEY = 'kartodesk_request_id';
 
 	const EDITABLE_STATUSES = array( 'pending', 'processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed' );
 
@@ -161,6 +162,10 @@ class KartoDesk_Rest {
 			$order . '/notes'     => array(
 				'GET'  => array( 'list_notes', array( 'orders.view' ) ),
 				'POST' => array( 'add_note', array( 'orders.notes' ) ),
+			),
+			$order . '/refunds'   => array(
+				'GET'  => array( 'list_refunds', array( 'orders.view' ) ),
+				'POST' => array( 'create_refund', array( 'orders.refund' ) ),
 			),
 			$order . '/shipments' => array(
 				'GET'    => array( 'list_shipments', array( 'orders.view' ) ),
@@ -294,6 +299,7 @@ class KartoDesk_Rest {
 			'role'        => $slug,
 			'role_label'  => isset( $names[ $slug ] ) ? translate_user_role( $names[ $slug ] ) : $slug,
 			'name'        => $user->display_name,
+			'user'        => (string) $user->ID,
 			'permissions' => KartoDesk_Access::current_permissions(),
 		);
 	}
@@ -480,12 +486,69 @@ class KartoDesk_Rest {
 	 * @return WP_REST_Response
 	 */
 	public static function update_status( WP_REST_Request $request ) {
-		$status = $request->get_param( 'status' );
-		if ( ! self::is_settable_status( $status ) ) {
-			return self::error( __( 'Invalid order ID or status.', 'kartodesk-for-woocommerce' ), 400 );
+		$update = self::parse_order_update( $request->get_json_params() );
+		if ( is_string( $update ) ) {
+			return self::error( $update, 400 );
 		}
-		list( $order ) = self::wc( 'PUT', 'orders/' . (int) $request['id'], array(), array( 'status' => $status ) );
+		list( $order ) = self::wc( 'PUT', 'orders/' . (int) $request['id'], array(), $update );
 		return new WP_REST_Response( $order );
+	}
+
+	/**
+	 * Validates an order edit (status, addresses, customer note). Mirrors src/lib/woocommerce/order-update.ts.
+	 *
+	 * @param mixed $body Decoded JSON body.
+	 * @return array|string The fields to send to WooCommerce, or an error message.
+	 */
+	private static function parse_order_update( $body ) {
+		$address_fields = array( 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'postcode', 'country', 'phone' );
+		if ( ! is_array( $body ) || array() === $body || array_diff( array_keys( $body ), array( 'status', 'billing', 'shipping', 'customer_note' ) ) ) {
+			return __( 'Nothing valid to update.', 'kartodesk-for-woocommerce' );
+		}
+		$update = array();
+		if ( array_key_exists( 'status', $body ) ) {
+			if ( ! self::is_settable_status( $body['status'] ) ) {
+				return __( 'Invalid order ID or status.', 'kartodesk-for-woocommerce' );
+			}
+			$update['status'] = $body['status'];
+		}
+		foreach ( array( 'billing' => array_merge( $address_fields, array( 'email' ) ), 'shipping' => $address_fields ) as $name => $allowed ) {
+			if ( ! array_key_exists( $name, $body ) ) {
+				continue;
+			}
+			$address = $body[ $name ];
+			if ( ! is_array( $address ) || array() === $address || array_values( $address ) === $address ) {
+				return __( 'Address fields are not valid.', 'kartodesk-for-woocommerce' );
+			}
+			$clean = array();
+			foreach ( $address as $key => $value ) {
+				if ( ! in_array( $key, $allowed, true ) || ! is_string( $value ) ) {
+					return __( 'Address fields are not valid.', 'kartodesk-for-woocommerce' );
+				}
+				$text = trim( $value );
+				if ( mb_strlen( $text ) > 200 || preg_match( '/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/', $text ) ) {
+					return __( 'Address fields are not valid.', 'kartodesk-for-woocommerce' );
+				}
+				if ( 'country' === $key && '' !== $text ) {
+					if ( ! preg_match( '/^[A-Za-z]{2}$/', $text ) ) {
+						return __( 'Address fields are not valid.', 'kartodesk-for-woocommerce' );
+					}
+					$text = strtoupper( $text );
+				}
+				if ( 'email' === $key && '' !== $text && ! is_email( $text ) ) {
+					return __( 'Enter a valid billing email address.', 'kartodesk-for-woocommerce' );
+				}
+				$clean[ $key ] = $text;
+			}
+			$update[ $name ] = $clean;
+		}
+		if ( array_key_exists( 'customer_note', $body ) ) {
+			if ( ! is_string( $body['customer_note'] ) || mb_strlen( $body['customer_note'] ) > 1000 ) {
+				return __( 'The customer note is too long.', 'kartodesk-for-woocommerce' );
+			}
+			$update['customer_note'] = trim( $body['customer_note'] );
+		}
+		return $update;
 	}
 
 	/**
@@ -561,6 +624,200 @@ class KartoDesk_Rest {
 			array( 'note' => trim( $note ), 'customer_note' => true === $customer_note )
 		);
 		return new WP_REST_Response( $created, 201 );
+	}
+
+	/**
+	 * Every refund on an order. WooCommerce returns 10 per page by default, so all pages are read.
+	 *
+	 * @param int $id Order ID.
+	 * @return array
+	 */
+	private static function all_refunds( $id ) {
+		$all = array();
+		for ( $page = 1; $page <= 50; $page++ ) {
+			list( $batch, $headers ) = self::wc( 'GET', 'orders/' . $id . '/refunds', array( 'per_page' => 100, 'page' => $page ) );
+			$all                     = array_merge( $all, is_array( $batch ) ? $batch : array() );
+			$pages                   = isset( $headers['X-WP-TotalPages'] ) ? (int) $headers['X-WP-TotalPages'] : 1;
+			if ( $page >= $pages ) {
+				return $all;
+			}
+		}
+		throw new KartoDesk_Error( esc_html__( 'This order has too many refunds to read safely.', 'kartodesk-for-woocommerce' ), 500 );
+	}
+
+	/**
+	 * GET /woo/orders/{id}/refunds — refunds already recorded on the order.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public static function list_refunds( WP_REST_Request $request ) {
+		return new WP_REST_Response( self::all_refunds( (int) $request['id'] ) );
+	}
+
+	/**
+	 * POST /woo/orders/{id}/refunds — records a refund. Nothing is sent to the payment gateway unless `gateway` is true.
+	 * The request id is stored on the refund, so a retry returns the refund that already exists. Refunds on one order
+	 * are handled one at a time (database lock), so two requests with the same id cannot both create a refund.
+	 * Mirrors src/app/api/woo/orders/[id]/refunds/route.ts.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public static function create_refund( WP_REST_Request $request ) {
+		$refund = self::parse_refund_request( $request->get_json_params() );
+		if ( is_string( $refund ) ) {
+			return self::error( $refund, 400 );
+		}
+		global $wpdb;
+		$id   = (int) $request['id'];
+		$lock = 'kartodesk_refund_' . $id;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$got = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK( %s, 20 )', $lock ) );
+		if ( '1' !== (string) $got ) {
+			return self::error( __( 'Another refund on this order is in progress. Wait a moment and check the refund history.', 'kartodesk-for-woocommerce' ), 409 );
+		}
+		try {
+			return self::create_refund_locked( $id, $refund );
+		} finally {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK( %s )', $lock ) );
+		}
+	}
+
+	/**
+	 * The check-then-create part of a refund; only called while the order's refund lock is held.
+	 *
+	 * @param int   $id     Order ID.
+	 * @param array $refund Checked refund.
+	 * @return WP_REST_Response
+	 */
+	private static function create_refund_locked( $id, $refund ) {
+		foreach ( self::all_refunds( $id ) as $found ) {
+			foreach ( isset( $found['meta_data'] ) && is_array( $found['meta_data'] ) ? $found['meta_data'] : array() as $meta ) {
+				if ( isset( $meta['key'], $meta['value'] ) && self::REFUND_META_KEY === $meta['key'] && $meta['value'] === $refund['request_id'] ) {
+					list( $order ) = self::wc( 'GET', 'orders/' . $id );
+					return new WP_REST_Response( array( 'refund' => $found, 'order' => $order, 'duplicate' => true ) );
+				}
+			}
+		}
+		list( $before ) = self::wc( 'GET', 'orders/' . $id );
+		$refunded       = 0;
+		foreach ( isset( $before['refunds'] ) && is_array( $before['refunds'] ) ? $before['refunds'] : array() as $done ) {
+			$refunded += abs( self::to_units( isset( $done['total'] ) ? $done['total'] : 0 ) );
+		}
+		if ( self::to_units( $refund['amount'] ) > self::to_units( $before['total'] ) - $refunded ) {
+			return self::error( __( 'That is more than what is left to refund on this order.', 'kartodesk-for-woocommerce' ), 409 );
+		}
+		$line_items = array();
+		foreach ( $refund['items'] as $item ) {
+			$line = array( 'id' => $item['id'], 'quantity' => $item['quantity'], 'refund_total' => $item['refund_total'] );
+			if ( $item['taxes'] ) {
+				$line['refund_tax'] = $item['taxes'];
+			}
+			$line_items[] = $line;
+		}
+		list( $created ) = self::wc(
+			'POST',
+			'orders/' . $id . '/refunds',
+			array(),
+			array(
+				'amount'      => $refund['amount'],
+				'reason'      => $refund['reason'],
+				'api_refund'  => $refund['gateway'],
+				'api_restock' => $refund['restock'],
+				'line_items'  => $line_items,
+				'meta_data'   => array( array( 'key' => self::REFUND_META_KEY, 'value' => $refund['request_id'] ) ),
+			)
+		);
+		list( $order ) = self::wc( 'GET', 'orders/' . $id );
+		return new WP_REST_Response( array( 'refund' => $created, 'order' => $order ), 201 );
+	}
+
+	/**
+	 * Money as integer ten-thousandths, so sums never pick up floating-point noise.
+	 *
+	 * @param string|int|float $value Amount.
+	 * @return int
+	 */
+	private static function to_units( $value ) {
+		return (int) round( (float) $value * 10000 );
+	}
+
+	/**
+	 * Validates a refund request. Mirrors src/lib/woocommerce/refund.ts.
+	 *
+	 * @param mixed $body Decoded JSON body.
+	 * @return array|string The checked refund, or an error message.
+	 */
+	private static function parse_refund_request( $body ) {
+		$invalid = __( 'Invalid request.', 'kartodesk-for-woocommerce' );
+		$money   = '/^\d{1,9}(\.\d{1,4})?$/';
+		if ( ! is_array( $body ) || array_diff( array_keys( $body ), array( 'amount', 'reason', 'items', 'restock', 'gateway', 'request_id' ) ) ) {
+			return $invalid;
+		}
+		if ( ! isset( $body['amount'] ) || ! is_string( $body['amount'] ) || ! preg_match( $money, $body['amount'] ) || self::to_units( $body['amount'] ) <= 0 ) {
+			return __( 'Enter a refund amount greater than zero.', 'kartodesk-for-woocommerce' );
+		}
+		if ( isset( $body['reason'] ) && ( ! is_string( $body['reason'] ) || mb_strlen( $body['reason'] ) > 200 ) ) {
+			return __( 'The reason must be 200 characters or fewer.', 'kartodesk-for-woocommerce' );
+		}
+		if ( ! isset( $body['request_id'] ) || ! is_string( $body['request_id'] ) || ! preg_match( '/^[A-Za-z0-9-]{8,40}$/', $body['request_id'] ) ) {
+			return $invalid;
+		}
+		foreach ( array( 'restock', 'gateway' ) as $flag ) {
+			if ( isset( $body[ $flag ] ) && ! is_bool( $body[ $flag ] ) ) {
+				return $invalid;
+			}
+		}
+		$raw_items = isset( $body['items'] ) ? $body['items'] : array();
+		if ( ! is_array( $raw_items ) || count( $raw_items ) > 100 || ( array() !== $raw_items && array_keys( $raw_items ) !== range( 0, count( $raw_items ) - 1 ) ) ) {
+			return __( 'Invalid refund items.', 'kartodesk-for-woocommerce' );
+		}
+		$items = array();
+		$seen  = array();
+		$sum   = 0;
+		foreach ( $raw_items as $raw ) {
+			$ok = is_array( $raw ) && ! array_diff( array_keys( $raw ), array( 'id', 'quantity', 'refund_total', 'taxes' ) )
+				&& isset( $raw['id'], $raw['quantity'], $raw['refund_total'] )
+				&& is_int( $raw['id'] ) && $raw['id'] >= 1 && ! isset( $seen[ $raw['id'] ] )
+				&& is_int( $raw['quantity'] ) && $raw['quantity'] >= 0 && $raw['quantity'] <= 9999
+				&& is_string( $raw['refund_total'] ) && preg_match( $money, $raw['refund_total'] );
+			$taxes = array();
+			if ( $ok && isset( $raw['taxes'] ) ) {
+				$rates = array();
+				$ok    = is_array( $raw['taxes'] ) && count( $raw['taxes'] ) <= 20 && ( array() === $raw['taxes'] || array_keys( $raw['taxes'] ) === range( 0, count( $raw['taxes'] ) - 1 ) );
+				foreach ( $ok ? $raw['taxes'] : array() as $tax ) {
+					$tax_ok = is_array( $tax ) && ! array_diff( array_keys( $tax ), array( 'id', 'refund_total' ) )
+						&& isset( $tax['id'], $tax['refund_total'] ) && is_int( $tax['id'] ) && $tax['id'] >= 1 && ! isset( $rates[ $tax['id'] ] )
+						&& is_string( $tax['refund_total'] ) && preg_match( $money, $tax['refund_total'] );
+					if ( ! $tax_ok ) {
+						$ok = false;
+						break;
+					}
+					$rates[ $tax['id'] ] = true;
+					$sum                += self::to_units( $tax['refund_total'] );
+					$taxes[]             = array( 'id' => $tax['id'], 'refund_total' => $tax['refund_total'] );
+				}
+			}
+			if ( ! $ok ) {
+				return __( 'Invalid refund items.', 'kartodesk-for-woocommerce' );
+			}
+			$seen[ $raw['id'] ] = true;
+			$sum               += self::to_units( $raw['refund_total'] );
+			$items[]            = array( 'id' => $raw['id'], 'quantity' => $raw['quantity'], 'refund_total' => $raw['refund_total'], 'taxes' => $taxes );
+		}
+		if ( $sum > self::to_units( $body['amount'] ) ) {
+			return __( 'The item amounts add up to more than the refund amount.', 'kartodesk-for-woocommerce' );
+		}
+		return array(
+			'amount'     => $body['amount'],
+			'reason'     => isset( $body['reason'] ) ? trim( $body['reason'] ) : '',
+			'items'      => $items,
+			'restock'    => isset( $body['restock'] ) && true === $body['restock'] && count( $items ) > 0,
+			'gateway'    => isset( $body['gateway'] ) && true === $body['gateway'],
+			'request_id' => $body['request_id'],
+		);
 	}
 
 	/**

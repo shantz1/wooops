@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     ],
   } : null;
   const access = { protected: authEnabled(), session_ready: Boolean(process.env.WOOOPS_SESSION_SECRET),
-    role: identity?.role ?? null, role_label: identity?.roleLabel ?? null, name: identity?.name ?? null,
+    role: identity?.role ?? null, role_label: identity?.roleLabel ?? null, name: identity?.name ?? null, user: identity?.login ?? null,
     permissions: identity?.permissions ?? [], two_factor: Boolean(identity && totpSecretFor(identity.login)), rules };
   const { site_name: siteName = null, ...timezone } = await timezonePromise;
   if (!configured) return NextResponse.json({ ...timezone, configured, store_url: storeUrl, access, store: null });

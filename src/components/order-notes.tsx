@@ -78,11 +78,11 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
           className="w-full rounded-lg border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         <fieldset className="grid gap-2 sm:grid-cols-2">
           <legend className="sr-only">Who can see this note</legend>
-          <label className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${!toCustomer ? "border-foreground/40 bg-muted/40" : ""}`}>
+          <label className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${!toCustomer ? "border-foreground/40" : ""}`}>
             <input type="radio" name="note-audience" value="private" checked={!toCustomer} disabled={!canPrivate} onChange={() => setAudience("private")} className="mt-1" />
             <span><span className="flex items-center gap-1 font-medium"><Lock className="size-3.5" aria-hidden="true" />Private</span><span className="text-xs text-muted-foreground">Staff only. Not emailed.</span></span>
           </label>
-          <label className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${toCustomer ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30" : ""}`}>
+          <label className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${toCustomer ? "border-amber-400" : ""}`}>
             <input type="radio" name="note-audience" value="customer" checked={toCustomer} disabled={!canCustomer} onChange={() => setAudience("customer")} className="mt-1" />
             <span><span className="flex items-center gap-1 font-medium"><Mail className="size-3.5" aria-hidden="true" />To customer</span><span className="text-xs text-muted-foreground">Visible to the customer and may be emailed.</span></span>
           </label>
@@ -111,8 +111,8 @@ export function OrderNotes({ orderId, customerEmail, refreshKey }: { orderId: st
               <li key={note.id} className="p-5">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   {note.customer_note
-                    ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200"><Mail className="size-3" aria-hidden="true" />Customer-facing</span>
-                    : <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-medium text-foreground"><Lock className="size-3" aria-hidden="true" />Private</span>}
+                    ? <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 px-2 py-0.5 font-medium text-amber-800 dark:border-amber-700 dark:text-amber-300"><Mail className="size-3" aria-hidden="true" />Customer-facing</span>
+                    : <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium text-foreground"><Lock className="size-3" aria-hidden="true" />Private</span>}
                   <span>{!note.author || note.author === "WooCommerce" ? "Store system" : note.author}</span>
                   <span aria-hidden="true">·</span>
                   <time dateTime={created?.toISOString()}>{formatDateTime(created, timeZone)}</time>

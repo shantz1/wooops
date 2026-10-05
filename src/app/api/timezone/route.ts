@@ -8,5 +8,5 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
   const identity = requestIdentity(request);
   return NextResponse.json({ ...await readStoreTimezone(), access: { role: identity?.role ?? null, role_label: identity?.roleLabel ?? null,
-    name: identity?.name ?? null, permissions: identity?.permissions ?? [] } });
+    name: identity?.name ?? null, user: identity?.login ?? null, permissions: identity?.permissions ?? [] } });
 }

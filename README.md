@@ -84,7 +84,7 @@ Use an HTTPS reverse proxy, restrict direct access to the Node port and add per-
 
 ## WordPress plugin: KartoDesk
 
-1. Upload the packaged `kartodesk-for-woocommerce-0.1.6.zip` under **Plugins > Add New > Upload Plugin**.
+1. Upload the packaged `kartodesk-for-woocommerce-0.1.7.zip` under **Plugins > Add New > Upload Plugin**.
 2. Activate it and open **KartoDesk** in the admin menu. It runs inside its own wp-admin page; the WordPress menu, admin bar and notices stay visible.
 3. Use an administrator or store manager account. No Node server, API keys or WooOps password are needed.
 
@@ -122,8 +122,13 @@ Both the standalone app and the plugin use the same permissions. The server chec
 | `customers.view` | Registered customers |
 | `reports.view` | Order and inventory reports and CSV exports |
 | `settings.view` | Settings: connection, store details, panel preferences, roles |
+| `orders.refund` | Record refunds on orders |
+| `orders.delete` | Permanently delete orders |
+| `discounts.manage` | View, create, edit and delete discount codes |
+| `customers.edit` | Create and edit registered customers |
+| `tools.run` | Clear caches, rebuild lookup tables and other store maintenance |
 
-A customer-facing note or a shipment notification also needs `orders.notify`; a product edit that changes stock fields also needs `inventory.edit`.
+A customer-facing note or a shipment notification also needs `orders.notify`; a product edit that changes stock fields also needs `inventory.edit`. Refunds, order deletion, discounts, customer editing and maintenance tools have their own permissions so they can be given separately from changing order status.
 
 ## Tracking and emails
 

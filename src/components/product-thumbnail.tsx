@@ -9,7 +9,7 @@ export function ProductThumbnail({ src, alt, size = 48 }: { src?: string; alt: s
   const usable = src && /^https?:\/\//i.test(src);
 
   return (
-    <span className="grid shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted/40 text-muted-foreground" style={{ width: size, height: size }}>
+    <span className="grid shrink-0 place-items-center overflow-hidden rounded-lg border text-muted-foreground" style={{ width: size, height: size }}>
       {usable && !failed ? (
         <Image src={src} alt={alt} width={size} height={size} unoptimized loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} className="h-full w-full object-cover" />
       ) : <Package className="size-5" aria-label="No product image" />}

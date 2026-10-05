@@ -8,7 +8,7 @@ import { errorMessage, fetchJson } from "@/lib/fetch-json";
 import { listHref, saveNavigation, useOrdersNavigation, type OrdersNavigation } from "@/lib/orders-navigation";
 import { statusName, useOrderStatuses } from "@/lib/use-order-statuses";
 
-const button = "inline-flex h-9 items-center gap-1 rounded-lg border bg-background px-3 text-sm hover:bg-muted disabled:pointer-events-none disabled:opacity-40";
+const button = "inline-flex h-9 items-center gap-1 rounded-lg border bg-background px-3 text-sm hover:bg-accent disabled:pointer-events-none disabled:opacity-40";
 
 /**
  * Previous/next order within the filtered list the user came from. Steps inside the loaded page use plain

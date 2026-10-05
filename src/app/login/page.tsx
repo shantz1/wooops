@@ -29,7 +29,7 @@ export default function LoginPage() {
     }
   }
 
-  return <main className="grid min-h-screen place-items-center bg-muted/30 p-6">
+  return <main className="grid min-h-screen place-items-center p-6">
     <form onSubmit={submit} className="w-full max-w-sm rounded-2xl border bg-background p-7 shadow-sm">
       <div className="grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground"><LockKeyhole className="size-5" aria-hidden="true" /></div>
       <h1 className="mt-6 break-words text-2xl font-semibold">{preferences.name}</h1>

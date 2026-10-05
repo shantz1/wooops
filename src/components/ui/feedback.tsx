@@ -40,10 +40,10 @@ export function EmptyState({ icon: Icon, title, children, className = "py-16" }:
 }
 
 const tones = {
-  error: { icon: XCircle, className: "border-destructive/30 bg-destructive/5 text-destructive", role: "alert" },
-  warning: { icon: AlertTriangle, className: "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100", role: "alert" },
-  success: { icon: CheckCircle2, className: "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100", role: "status" },
-  info: { icon: Info, className: "border-border bg-muted/40 text-foreground", role: "status" },
+  error: { icon: XCircle, className: "border-destructive border-l-4 text-destructive", role: "alert" },
+  warning: { icon: AlertTriangle, className: "border-amber-300 border-l-4 text-amber-950 dark:border-amber-700 dark:text-amber-100", role: "alert" },
+  success: { icon: CheckCircle2, className: "border-emerald-300 border-l-4 text-emerald-950 dark:border-emerald-700 dark:text-emerald-100", role: "status" },
+  info: { icon: Info, className: "border-border border-l-4 text-foreground", role: "status" },
 } as const;
 
 /** Inline message that keeps the surrounding data visible, e.g. a failed refresh or a partially successful save. */

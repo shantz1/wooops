@@ -9,7 +9,7 @@ import { useRemote } from "@/lib/use-remote";
 export type PanelPreferences = { name: string; theme: "system" | "light" | "dark" };
 // The WordPress plugin ships under its own name; the standalone app keeps WooOps.
 const defaults: PanelPreferences = { name: wordpressRuntime() ? "KartoDesk" : "WooOps", theme: "system" };
-export type WorkspaceAccess = { role: string | null; role_label?: string | null; name?: string | null; permissions: Permission[] };
+export type WorkspaceAccess = { role: string | null; role_label?: string | null; name?: string | null; /** Stable id of the signed-in user, used to keep browser preferences per user. */ user?: string | null; permissions: Permission[] };
 type PanelContext = {
   timeZone: string;
   /** Whether the signed-in user's permissions have loaded; until then actions stay hidden. */

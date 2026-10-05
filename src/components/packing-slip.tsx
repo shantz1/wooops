@@ -35,7 +35,7 @@ export function PackingSlip({ id }: { id: string }) {
   );
 
   if (!order) {
-    return <div className="min-h-screen bg-muted/30 p-4 sm:p-8">{toolbar}
+    return <div className="min-h-screen p-4 sm:p-8">{toolbar}
       <div className="mx-auto mt-6 max-w-3xl rounded-xl border bg-background">{loading ? <LoadingState label="Loading order…" /> : <ErrorState message={error || "Order not found."} onRetry={reload} />}</div>
     </div>;
   }
@@ -50,7 +50,7 @@ export function PackingSlip({ id }: { id: string }) {
   const methods = (order.shipping_lines || []).map(line => plainText(line.method_title)).filter(Boolean);
   const tracking = shipments?.shipments || [];
 
-  return <div className="min-h-screen bg-muted/30 p-4 sm:p-8 print:min-h-0 print:bg-white print:p-0">
+  return <div className="min-h-screen p-4 sm:p-8 print:min-h-0 print:bg-white print:p-0">
     {toolbar}
     {storeError && <div className="mx-auto mt-4 max-w-3xl print:hidden"><ErrorState message={storeError} onRetry={reloadSettings} /></div>}
     {shipmentError && <div className="mx-auto mt-4 max-w-3xl print:hidden"><ErrorState message={shipmentError} onRetry={reloadShipments} /></div>}

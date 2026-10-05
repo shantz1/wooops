@@ -1,6 +1,10 @@
 "use client";
 
 import { usePanelPreferences } from "@/components/panel-preferences";
+import { ViewTabs } from "@/components/collection/view-tabs";
+import { ColumnMenu } from "@/components/collection/column-menu";
+import { DensityToggle } from "@/components/collection/density-toggle";
+import { BulkBar } from "@/components/collection/bulk-bar";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -13,14 +17,26 @@ import { formatMoney } from "@/lib/money";
 import { defaultListState, listHref, readListState, saveNavigation, writeListState } from "@/lib/orders-navigation";
 import { refreshOrderStatuses, statusName, useOrderStatusError, useOrderStatuses } from "@/lib/use-order-statuses";
 import { useDebouncedValue, useRemote } from "@/lib/use-remote";
+import { useCollectionPrefs } from "@/lib/use-collection-prefs";
+import { addView, removeView, setColumns, setDensity, viewMatches } from "@/lib/collection-prefs";
 import type { WooOrder } from "@/types/woocommerce";
 
 type OrdersResponse = { configured?: boolean; orders: WooOrder[]; total: number; pages: number };
 
 const perPage = 20;
+const allColumns = ["number", "customer", "status", "payment", "total", "date"];
+const defaultColumns = ["number", "customer", "status", "payment", "total", "date"];
+
+const builtInViews: Array<{ id: string; name: string; custom: boolean; filters: Record<string, string> }> = [
+  { id: "all", name: "All orders", custom: false, filters: {} },
+  { id: "processing", name: "Processing", custom: false, filters: { status: "processing" } },
+  { id: "on-hold", name: "On hold", custom: false, filters: { status: "on-hold" } },
+  { id: "failed", name: "Failed", custom: false, filters: { status: "failed" } },
+  { id: "completed", name: "Completed", custom: false, filters: { status: "completed" } },
+];
 
 export function OrdersTable() {
-  const { timeZone, can } = usePanelPreferences();
+  const { timeZone, can, access } = usePanelPreferences();
   const canWrite = can("orders.status");
   const [selected, setSelected] = useState<number[]>([]);
   const [search, setSearch] = useState(defaultListState.search);
@@ -36,6 +52,35 @@ export function OrdersTable() {
   const statusError = useOrderStatusError();
   const filterStatuses = statuses.filter(item => item.slug !== "trash");
   const settableStatuses = statuses.filter(item => item.settable);
+
+  const { prefs, ready: prefsReady, update: updatePrefs } = useCollectionPrefs(
+    "orders",
+    allColumns,
+    defaultColumns,
+    access ? access.user ?? "default" : null
+  );
+
+  // Column definitions for the menu
+  const columnDefs = [
+    { key: "number", label: "Order" },
+    { key: "customer", label: "Customer" },
+    { key: "status", label: "Status" },
+    { key: "payment", label: "Payment" },
+    { key: "total", label: "Total" },
+    { key: "date", label: "Date" },
+  ];
+
+  // Find the active view based on current filters
+  const currentFilters: Record<string, string> = {
+    search: debouncedSearch,
+    status: status === "all" ? "" : status,
+  };
+  const allViews = [
+    ...builtInViews,
+    ...prefs.views.map((v) => ({ ...v, custom: true as const })),
+  ];
+  const activeViewId = allViews.find((v) => viewMatches(v, currentFilters))?.id ?? null;
+  const canSaveView = !activeViewId && Object.values(currentFilters).some((v) => v !== "");
 
   useEffect(() => {
     const restore = () => {
@@ -94,9 +139,44 @@ export function OrdersTable() {
     }
   }
 
+  function handleSelectView(viewId: string) {
+    const view = allViews.find((v) => v.id === viewId);
+    if (!view) return;
+    setSearch(view.filters.search ?? "");
+    setStatus(view.filters.status ?? "all");
+    setPage(1);
+  }
+
+  function handleSaveView(name: string): string | undefined {
+    const result = addView(prefs, name, currentFilters);
+    if (!result.error) {
+      updatePrefs(() => result.prefs);
+    }
+    return result.error;
+  }
+
+  function handleRemoveView(viewId: string) {
+    const updated = removeView(prefs, viewId);
+    updatePrefs(() => updated);
+  }
+
   const allSelected = orders.length > 0 && orders.every(order => visibleSelected.includes(order.id));
 
+  // Determine which columns are visible
+  const visibleColumnKeys = prefs.columns.filter((col) => allColumns.includes(col));
+  const visibleCols = columnDefs.filter((col) => visibleColumnKeys.includes(col.key));
+
   return <div className="space-y-4">
+    {prefsReady && (
+      <ViewTabs
+        views={allViews}
+        activeId={activeViewId}
+        onSelect={handleSelectView}
+        onSave={handleSaveView}
+        onRemove={handleRemoveView}
+        canSave={canSaveView}
+      />
+    )}
     <div className="flex flex-col gap-3 rounded-xl border bg-background p-4 shadow-sm sm:flex-row">
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -107,13 +187,28 @@ export function OrdersTable() {
         {filterStatuses.map(item => <option key={item.slug} value={item.slug}>{item.name}{item.count !== null ? ` (${item.count})` : ""}</option>)}
         {status !== "all" && !filterStatuses.some(item => item.slug === status) && <option value={status}>{statusName(statuses, status)}</option>}
       </select>
-      <button type="button" onClick={() => { refreshOrderStatuses(); reload(); }} disabled={loading} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm hover:bg-muted disabled:opacity-60"><RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />Refresh</button>
+      {prefsReady && (
+        <>
+          <ColumnMenu
+            columns={columnDefs}
+            visible={visibleColumnKeys}
+            onChange={(newVisible) => updatePrefs((current) => setColumns(current, newVisible, allColumns, defaultColumns))}
+            onReset={() => updatePrefs((current) => setColumns(current, defaultColumns, allColumns, defaultColumns))}
+          />
+          <DensityToggle
+            density={prefs.density}
+            onChange={(newDensity) => updatePrefs((current) => setDensity(current, newDensity))}
+          />
+        </>
+      )}
+      <button type="button" onClick={() => { refreshOrderStatuses(); reload(); }} disabled={loading} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm hover:bg-accent disabled:opacity-60"><RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />Refresh</button>
     </div>
-    {canWrite && visibleSelected.length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-background p-3 shadow-sm">
-      <span className="text-sm font-medium">{visibleSelected.length} selected</span>
-      <select aria-label="New status for selected orders" value={bulkStatus} onChange={event => setBulkStatus(event.target.value)} className="h-9 rounded-md border px-2 text-sm">{settableStatuses.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select>
-      <button type="button" disabled={saving} onClick={bulk} className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50">{saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}{saving ? "Updating..." : "Update status"}</button>
-    </div>}
+    {canWrite && (
+      <BulkBar count={visibleSelected.length} noun="order" onClear={() => setSelected([])}>
+        <select aria-label="New status for selected orders" value={bulkStatus} onChange={event => setBulkStatus(event.target.value)} className="h-9 rounded-md border px-2 text-sm">{settableStatuses.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select>
+        <button type="button" disabled={saving} onClick={bulk} className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50">{saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}{saving ? "Updating..." : "Update status"}</button>
+      </BulkBar>
+    )}
     {statusError && <Notice tone="warning" action={<RetryButton onRetry={refreshOrderStatuses} />}>{statusError}</Notice>}
       {bulkResult && <Notice tone={bulkResult.tone}>{bulkResult.message}</Notice>}
     {error && data && <Notice tone="error" action={<RetryButton onRetry={reload} busy={loading} />}>Showing the last loaded orders. {error}</Notice>}
@@ -122,15 +217,31 @@ export function OrdersTable() {
         : data.configured === false ? <EmptyState icon={ShoppingCart} title="Store is not configured">Add the store URL and API keys on the server, then check Settings.</EmptyState>
         : orders.length === 0 ? <EmptyState icon={ShoppingCart} title="No orders found">{debouncedSearch || status !== "all" ? "Try a different search or status." : undefined}</EmptyState>
         : <div className={`overflow-x-auto transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}><table className="w-full text-sm">
-          <thead className="border-b bg-muted/30 text-left text-xs text-muted-foreground"><tr><th className="w-12 px-5 py-3"><input type="checkbox" disabled={!canWrite || saving} aria-label="Select all orders on this page" checked={allSelected} onChange={event => setSelected(event.target.checked ? orders.map(order => order.id) : [])} /></th><th className="px-3 py-3">Order</th><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Payment</th><th className="px-5 py-3">Total</th><th className="px-5 py-3">Date</th></tr></thead>
-          <tbody className="divide-y">{orders.map(order => <tr key={order.id} className="group relative hover:bg-muted/20">
-            <td className="relative px-5 py-4"><input type="checkbox" disabled={!canWrite || saving} aria-label={`Select order ${order.number}`} checked={visibleSelected.includes(order.id)} onChange={event => setSelected(current => event.target.checked ? [...current, order.id] : current.filter(id => id !== order.id))} className="relative z-10" /></td>
-            <td className="px-3 py-4"><Link href={`/orders/${order.id}`} className="font-medium after:absolute after:inset-0 hover:underline focus-visible:underline group-hover:underline">#{order.number}</Link></td>
-            <td className="px-5 py-4"><div className="font-medium">{order.billing.first_name} {order.billing.last_name}{!order.customer_id && <span className="ml-1.5 text-xs font-normal text-muted-foreground">(guest)</span>}</div><div className="text-xs text-muted-foreground">{order.billing.email}</div></td>
-            <td className="px-5 py-4"><OrderStatusBadge status={order.status} /></td>
-            <td className="px-5 py-4 text-muted-foreground">{order.payment_method_title || "—"}</td>
-            <td className="whitespace-nowrap px-5 py-4 font-medium tabular-nums">{formatMoney(order.total, order.currency)}</td>
-            <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">{wooDate(order.date_created, order.date_created_gmt)?.toLocaleDateString(undefined, { timeZone }) || "—"}</td>
+          <thead className="border-b font-medium text-left text-xs text-muted-foreground"><tr><th className="w-12 px-5 py-3"><input type="checkbox" disabled={!canWrite || saving} aria-label="Select all orders on this page" checked={allSelected} onChange={event => setSelected(event.target.checked ? orders.map(order => order.id) : [])} /></th>
+            {visibleCols.map((col) => {
+              const headerClass = col.key === "number" ? "px-3" : "px-5";
+              return <th key={col.key} className={`${headerClass} py-3`}>{col.label}</th>;
+            })}
+          </tr></thead>
+          <tbody className="divide-y">{orders.map(order => <tr key={order.id} className="group relative hover:bg-accent">
+            <td className={`relative px-5 ${prefs.density === "compact" ? "py-2" : "py-4"}`}><input type="checkbox" disabled={!canWrite || saving} aria-label={`Select order ${order.number}`} checked={visibleSelected.includes(order.id)} onChange={event => setSelected(current => event.target.checked ? [...current, order.id] : current.filter(id => id !== order.id))} className="relative z-10" /></td>
+            {visibleColumnKeys.map((colKey) => {
+              const cellClass = colKey === "number" ? "px-3" : "px-5";
+              const padding = prefs.density === "compact" ? "py-2" : "py-4";
+              return (
+                <td key={colKey} className={`${cellClass} ${padding}`}>
+                  {colKey === "number" && <Link href={`/orders/${order.id}`} className="font-medium after:absolute after:inset-0 hover:underline focus-visible:underline group-hover:underline">#{order.number}</Link>}
+                  {colKey === "customer" && <>
+                    <div className="font-medium">{order.billing.first_name} {order.billing.last_name}{!order.customer_id && <span className="ml-1.5 text-xs font-normal text-muted-foreground">(guest)</span>}</div>
+                    <div className="text-xs text-muted-foreground">{order.billing.email}</div>
+                  </>}
+                  {colKey === "status" && <OrderStatusBadge status={order.status} />}
+                  {colKey === "payment" && <span className="text-muted-foreground">{order.payment_method_title || "—"}</span>}
+                  {colKey === "total" && <span className="whitespace-nowrap font-medium tabular-nums">{formatMoney(order.total, order.currency)}</span>}
+                  {colKey === "date" && <span className="whitespace-nowrap text-muted-foreground">{wooDate(order.date_created, order.date_created_gmt)?.toLocaleDateString(undefined, { timeZone }) || "—"}</span>}
+                </td>
+              );
+            })}
           </tr>)}</tbody>
         </table></div>}
       <div className="flex items-center justify-between border-t px-5 py-3 text-sm">

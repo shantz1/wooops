@@ -31,6 +31,11 @@ class KartoDesk_Access {
 		'customers.view'   => 'kartodesk_view_customers',
 		'reports.view'     => 'kartodesk_view_reports',
 		'settings.view'    => 'kartodesk_manage_settings',
+		'orders.refund'    => 'kartodesk_refund_orders',
+		'orders.delete'    => 'kartodesk_delete_orders',
+		'discounts.manage' => 'kartodesk_manage_discounts',
+		'customers.edit'   => 'kartodesk_edit_customers',
+		'tools.run'        => 'kartodesk_run_tools',
 	);
 
 	/**
@@ -49,6 +54,11 @@ class KartoDesk_Access {
 		'customers.view'   => array( 'list_users' ),
 		'reports.view'     => array( 'view_woocommerce_reports' ),
 		'settings.view'    => array( 'manage_woocommerce' ),
+		'orders.refund'    => array( 'publish_shop_orders' ),
+		'orders.delete'    => array( 'delete_shop_orders', 'delete_others_shop_orders' ),
+		'discounts.manage' => array( 'read_private_shop_coupons', 'edit_shop_coupons', 'edit_others_shop_coupons', 'publish_shop_coupons' ),
+		'customers.edit'   => array( 'list_users', 'create_users', 'edit_users' ),
+		'tools.run'        => array( 'manage_woocommerce' ),
 	);
 
 	/** Meta capability for the admin menu: granted to anyone with at least one KartoDesk permission. */
@@ -58,6 +68,12 @@ class KartoDesk_Access {
 	const DEFAULT_ROLES = array( 'administrator', 'shop_manager' );
 
 	const DEFAULTS_OPTION = 'kartodesk_access_defaults';
+	const DEFAULTS_VERSION_OPTION = 'kartodesk_access_version';
+
+	const PERMISSION_SETS = array(
+		1 => array( 'orders.view', 'orders.status', 'orders.notes', 'orders.notify', 'orders.shipments', 'products.view', 'products.edit', 'inventory.edit', 'customers.view', 'reports.view', 'settings.view' ),
+		2 => array( 'orders.refund', 'orders.delete', 'discounts.manage', 'customers.edit', 'tools.run' ),
+	);
 
 	/**
 	 * Registers hooks.
@@ -91,23 +107,40 @@ class KartoDesk_Access {
 	}
 
 	/**
-	 * Grants every permission to the default roles once, on activation or when updating from a version
-	 * without permissions. Later changes made in Settings > Access are never overwritten.
+	 * Grants permissions to the default roles incrementally by version. On activation or when updating,
+	 * only new permissions from versions not yet applied are granted. Later changes made in Settings > Access
+	 * are never overwritten.
 	 */
 	public static function install_defaults() {
-		if ( get_option( self::DEFAULTS_OPTION ) ) {
+		$applied_version = (int) get_option(
+			self::DEFAULTS_VERSION_OPTION,
+			get_option( self::DEFAULTS_OPTION ) ? 1 : 0
+		);
+
+		$max_version = max( array_keys( self::PERMISSION_SETS ) );
+
+		if ( $applied_version >= $max_version ) {
 			return;
 		}
+
 		foreach ( self::DEFAULT_ROLES as $slug ) {
 			$role = get_role( $slug );
-			if ( $role ) {
-				foreach ( self::PERMISSIONS as $capability ) {
-					$role->add_cap( $capability );
+			if ( ! $role ) {
+				continue;
+			}
+
+			foreach ( self::PERMISSION_SETS as $version => $permission_keys ) {
+				if ( $version > $applied_version ) {
+					foreach ( $permission_keys as $permission ) {
+						if ( isset( self::PERMISSIONS[ $permission ] ) ) {
+							$role->add_cap( self::PERMISSIONS[ $permission ] );
+						}
+					}
 				}
 			}
 		}
-		// Autoloaded, so the check above costs no extra query on later requests.
-		update_option( self::DEFAULTS_OPTION, '1', true );
+
+		update_option( self::DEFAULTS_VERSION_OPTION, $max_version, true );
 	}
 
 	/**
@@ -123,6 +156,7 @@ class KartoDesk_Access {
 			}
 		}
 		delete_option( self::DEFAULTS_OPTION );
+		delete_option( self::DEFAULTS_VERSION_OPTION );
 	}
 
 	/**

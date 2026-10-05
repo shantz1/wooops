@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { ProductThumbnail } from "@/components/product-thumbnail";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { fetchJson } from "@/lib/fetch-json";
 
 export function CreateProductForm() {
@@ -79,9 +80,7 @@ export function CreateProductForm() {
             <input maxLength={100} value={sku} onChange={event => setSku(event.target.value)} className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />
           </label>
         </div>
-        <label className="block text-sm font-medium">Description <span className="text-muted-foreground">(optional)</span>
-          <textarea rows={4} value={description} onChange={event => setDescription(event.target.value)} className="mt-2 w-full rounded-lg border bg-background p-3" />
-        </label>
+        <RichTextEditor label="Description (optional)" value={description} onChange={setDescription} disabled={saving} help="Up to 10,000 characters including formatting." />
         <div className="flex items-end gap-4">
           <label className="block flex-1 text-sm font-medium">Product image URL <span className="text-muted-foreground">(optional)</span>
             <input type="url" placeholder="https://your-store.com/wp-content/uploads/..." value={imageUrl} onChange={event => setImageUrl(event.target.value)} className="mt-2 h-10 w-full rounded-lg border bg-background px-3" />
