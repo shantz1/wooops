@@ -20,7 +20,8 @@ interface Refund {
   id: number;
   date_created: string;
   reason: string;
-  total: string;
+  /** WooCommerce returns a refund's value as a positive `amount`; `total` is not part of this response. */
+  amount: string;
   line_items: Array<{ id: number; name: string; quantity: number; total: string; meta_data?: Array<{ key: string; value: unknown }> }>;
 }
 
@@ -214,7 +215,7 @@ export function OrderRefunds({ order, onOrderChange }: { order: WooOrder; onOrde
                     <p className="text-sm font-medium">{new Date(refund.date_created).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{refund.reason || "No reason given"}</p>
                   </div>
-                  <p className="text-sm font-medium">{money(Math.abs(toUnits(refund.total)))}</p>
+                  <p className="text-sm font-medium">{money(Math.abs(toUnits(refund.amount)))}</p>
                 </div>
                 {refund.line_items.length > 0 && (
                   <ul className="mt-2 text-xs text-muted-foreground">

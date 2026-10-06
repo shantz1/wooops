@@ -123,7 +123,6 @@ Both the standalone app and the plugin use the same permissions. The server chec
 | `reports.view` | Order and inventory reports and CSV exports |
 | `settings.view` | Settings: connection, store details, panel preferences, roles |
 | `orders.refund` | Record refunds on orders |
-| `orders.delete` | Permanently delete orders |
 | `discounts.manage` | View, create, edit and delete discount codes |
 | `customers.edit` | Create and edit registered customers |
 | `tools.run` | Clear caches, rebuild lookup tables and other store maintenance |

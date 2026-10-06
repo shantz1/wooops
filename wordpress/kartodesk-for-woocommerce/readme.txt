@@ -28,7 +28,7 @@ KartoDesk uses WooCommerce's own REST API inside your site as the signed-in user
 
 = Who can use it =
 
-Administrators always have full access, and Shop managers start with full access. Under KartoDesk > Settings, administrators choose what each other role can do: view orders, change order status, add private notes, notify customers, manage shipment tracking, view products, edit products, change stock, view customers, view reports, open settings, issue refunds, delete orders, manage discounts, edit customers and run maintenance tools. Permissions are standard WordPress capabilities (prefixed `kartodesk_`), so role-editor plugins can manage them as well. WooCommerce's own permission checks still apply to every request.
+Administrators always have full access, and Shop managers start with full access. Under KartoDesk > Settings, administrators choose what each other role can do: view orders, change order status, add private notes, notify customers, manage shipment tracking, view products, edit products, change stock, view customers, view reports, open settings, issue refunds, manage discounts, edit customers and run maintenance tools. Permissions are standard WordPress capabilities (prefixed `kartodesk_`), so role-editor plugins can manage them as well. WooCommerce's own permission checks still apply to every request.
 
 = Emails =
 
@@ -67,6 +67,26 @@ Yes. It works through WooCommerce's REST controllers and declares HPOS compatibi
 
 Products, simple product creation, stock, registered customers, order and inventory reports with CSV, and panel settings. Product and customer lists have pagination. Reports load up to 500 records and flag incomplete results; inventory reports exclude variation stock. Enabling stock management requires explicit confirmation.
 
+== Screenshots ==
+
+1. Overview with the latest orders and store snapshot.
+2. Orders list with search, status filter, column choice and row density.
+3. Saved views for quick filters such as Processing, On hold, Failed and Completed.
+4. Select several orders to change their status in one step.
+5. Order summary with items, totals, customer, shipping address and payment details.
+6. Edit shipping and billing addresses with validation and a save bar.
+7. Courier tracking on an order, with optional customer notification.
+8. Payments tab with refund history and what is left to refund.
+9. Guided refund form with item quantities, tax split, restock option and a record-only or gateway choice.
+10. Product catalogue with stock controls.
+11. Product editor with a visual editor for descriptions.
+12. Inventory view for stock quantity and status.
+13. Customers list with orders and spend.
+14. Order reports with date filters and CSV export.
+15. Settings with store details, panel preferences and customer notifications.
+16. Roles and permissions: choose what each WordPress role can do in KartoDesk.
+17. Role details, for example a fulfilment role limited to orders and tracking.
+
 == Privacy ==
 
 KartoDesk does not track users or send telemetry. Its own scripts and styles load locally; product images can use the store's image or CDN URLs. It displays customer details that WooCommerce already stores, only to users who can manage WooCommerce.
@@ -77,7 +97,7 @@ KartoDesk does not track users or send telemetry. Its own scripts and styles loa
 * Add order address editing and refunds with tax breakdowns, refund history and duplicate-request checks.
 * Add per-user saved order views, column controls and list density preferences.
 * Add visual editors for product descriptions, short descriptions and purchase notes, and refresh the panel styling.
-* Add permissions for issuing refunds, deleting orders, managing discounts, editing customers and running maintenance tools. Administrators and Shop managers receive them automatically; other roles keep exactly what they had.
+* Add permissions for issuing refunds, managing discounts, editing customers and running maintenance tools. Administrators and Shop managers receive them automatically; other roles keep exactly what they had.
 
 = 0.1.6 =
 * Add permission-based access: choose per WordPress role who can view orders, change status, add notes, notify customers, manage tracking, view or edit products, change stock, view customers, view reports and open settings.

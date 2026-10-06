@@ -58,9 +58,9 @@ test("the plugin's capability list matches the shared permission list", () => {
 });
 
 test("new permissions exist and administrators get all of them", () => {
-  assert.equal(allPermissions.length, 16);
+  assert.equal(allPermissions.length, 15);
   assert.ok(allPermissions.includes("orders.refund"));
-  assert.ok(allPermissions.includes("orders.delete"));
+  assert.ok(!allPermissions.includes("orders.delete"), "order deletion is not part of KartoDesk");
   assert.ok(allPermissions.includes("discounts.manage"));
   assert.ok(allPermissions.includes("customers.edit"));
   assert.ok(allPermissions.includes("tools.run"));

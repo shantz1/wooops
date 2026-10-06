@@ -28,8 +28,6 @@ export const permissionList = [
     description: "Connection status, store details and panel preferences." },
   { key: "orders.refund", capability: "kartodesk_refund_orders", group: "Orders", label: "Issue refunds",
     description: "Record refunds on orders." },
-  { key: "orders.delete", capability: "kartodesk_delete_orders", group: "Orders", label: "Delete orders",
-    description: "Permanently delete orders." },
   { key: "discounts.manage", capability: "kartodesk_manage_discounts", group: "Catalogue", label: "Manage discounts",
     description: "View, create, edit and delete discount codes." },
   { key: "customers.edit", capability: "kartodesk_edit_customers", group: "Customers", label: "Edit customers",
