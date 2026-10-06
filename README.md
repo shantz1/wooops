@@ -8,6 +8,22 @@ Prefer to stay inside WordPress? Use **KartoDesk for WooCommerce**, the plugin v
 
 Under **Products**, search and open an item to edit its descriptions, prices, categories, image gallery, stock and shipping details. Images use existing store Media Library URLs. Categories, attributes, variations and reviews have their own sections. **Inventory** is for quantity updates and availability checks.
 
+## Screenshots
+
+Captured from the KartoDesk plugin on a demo store with dummy data.
+
+| | |
+|---|---|
+| <img src="docs/screenshots/01-overview.jpg" alt="Overview" width="420"><br>**Overview** | <img src="docs/screenshots/02-orders.jpg" alt="Orders list" width="420"><br>**Orders list** |
+| <img src="docs/screenshots/03-orders-processing-view.jpg" alt="Saved views" width="420"><br>**Saved views** | <img src="docs/screenshots/04-orders-bulk-selection.jpg" alt="Bulk status change" width="420"><br>**Bulk status change** |
+| <img src="docs/screenshots/05-order-summary.jpg" alt="Order summary" width="420"><br>**Order summary** | <img src="docs/screenshots/06-order-shipping-address.jpg" alt="Edit addresses" width="420"><br>**Edit addresses** |
+| <img src="docs/screenshots/07-order-tracking.jpg" alt="Courier tracking" width="420"><br>**Courier tracking** | <img src="docs/screenshots/08-order-payments.jpg" alt="Payments and refund history" width="420"><br>**Payments and refund history** |
+| <img src="docs/screenshots/09-order-refund-form.jpg" alt="Guided refund form" width="420"><br>**Guided refund form** | <img src="docs/screenshots/10-products.jpg" alt="Products" width="420"><br>**Products** |
+| <img src="docs/screenshots/11-product-editor.jpg" alt="Product editor" width="420"><br>**Product editor** | <img src="docs/screenshots/12-inventory.jpg" alt="Inventory" width="420"><br>**Inventory** |
+| <img src="docs/screenshots/13-customers.jpg" alt="Customers" width="420"><br>**Customers** | <img src="docs/screenshots/14-reports.jpg" alt="Reports" width="420"><br>**Reports** |
+| <img src="docs/screenshots/15-settings.jpg" alt="Settings" width="420"><br>**Settings** | <img src="docs/screenshots/16-settings-access.jpg" alt="Roles and permissions" width="420"><br>**Roles and permissions** |
+| <img src="docs/screenshots/17-settings-role-fulfilment.jpg" alt="Role details" width="420"><br>**Role details** |  |
+
 ## Standalone setup
 
 You need an HTTPS WooCommerce store and **Node.js 22.18+**.
