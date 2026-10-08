@@ -3,7 +3,7 @@
  * Plugin Name:       KartoDesk for WooCommerce
  * Plugin URI:        https://github.com/shantz1/wooops
  * Description:       A store operations workspace inside wp-admin: orders, products, stock, customers, reports and shipment tracking.
- * Version:           0.1.7
+ * Version:           0.1.8
  * Requires at least: 6.5
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -19,13 +19,14 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KARTODESK_VERSION', '0.1.7' );
+define( 'KARTODESK_VERSION', '0.1.8' );
 define( 'KARTODESK_FILE', __FILE__ );
 define( 'KARTODESK_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once KARTODESK_DIR . 'includes/class-kartodesk-access.php';
 require_once KARTODESK_DIR . 'includes/trait-kartodesk-catalog.php';
 require_once KARTODESK_DIR . 'includes/class-kartodesk-rest.php';
+require_once KARTODESK_DIR . 'includes/class-kartodesk-dashboard.php';
 require_once KARTODESK_DIR . 'includes/class-kartodesk-admin.php';
 
 // KartoDesk adds no rewrite rules. Flushing on activation removes a "/manage" rule left by pre-release builds.
@@ -58,5 +59,6 @@ add_action(
 		KartoDesk_Access::init();
 		KartoDesk_Rest::init();
 		KartoDesk_Admin::init();
+		KartoDesk_Dashboard::init();
 	}
 );

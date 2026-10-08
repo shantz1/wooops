@@ -79,6 +79,7 @@ export async function wooFetchWithHeaders<T>(path: string, init: RequestInit = {
     return {
       data: await readJson<T>(response),
       total: Number(response.headers.get("X-WP-Total") || 0),
+      totalAvailable: /^\d+$/.test(response.headers.get("X-WP-Total") || ""),
       pages: Number(response.headers.get("X-WP-TotalPages") || 1),
     };
   };

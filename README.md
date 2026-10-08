@@ -100,7 +100,7 @@ Use an HTTPS reverse proxy, restrict direct access to the Node port and add per-
 
 ## WordPress plugin: KartoDesk
 
-1. Upload the packaged `kartodesk-for-woocommerce-0.1.7.zip` under **Plugins > Add New > Upload Plugin**.
+1. Upload the packaged `kartodesk-for-woocommerce-0.1.8.zip` under **Plugins > Add New > Upload Plugin**.
 2. Activate it and open **KartoDesk** in the admin menu. It runs inside its own wp-admin page; the WordPress menu, admin bar and notices stay visible.
 3. Use an administrator or store manager account. No Node server, API keys or WooOps password are needed.
 
@@ -158,7 +158,9 @@ If a write times out, reload before retrying. Avoid editing the same order's tra
 ## Current limits
 
 - One store; standalone logins are shared roles, without individual staff accounts or an audit log.
-- Overview summarizes the latest five orders. Orders, products and customers have pagination; customers exclude guest checkouts.
+- **Settings > Dashboard customization:** check up to four cards, use the arrows to sort them, then save. Choose recent-order metrics, Orders today, Orders this week or a store order status. Daily and weekly counts cover the store and follow its timezone; weeks start on Monday. Cards marked “Recent” summarize the latest five orders.
+- In the plugin, the WordPress dashboard widget is enabled by default in a full-width row. It uses your account's saved cards; turn it off in the same tab or hide/collapse it using WordPress's normal controls. Saved off choices are preserved. In the standalone app, card preferences are saved per login in your browser.
+- Orders, products and customers have pagination; customers exclude guest checkouts.
 - Reports read up to 500 records and flag incomplete results. Order value is not profit or confirmed revenue; inventory reports exclude variation quantities.
 - Product creation supports simple products. The plugin uses an existing Media Library image URL; standalone images must belong to the store origin.
 - Enabling stock management requires confirmation. Tracking edits require removing and re-adding the shipment.

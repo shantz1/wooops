@@ -4,7 +4,7 @@ Tags: woocommerce, orders, shipment tracking, order notes, fulfilment
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.7
+Stable tag: 0.1.8
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -14,7 +14,8 @@ A focused order workspace inside wp-admin: review orders, add private or custome
 
 KartoDesk gives your team one fast screen for daily order work, without leaving WordPress.
 
-* **Overview** of the five most recent orders, clearly labelled as a snapshot rather than store-wide totals.
+* **Overview** with up to four selectable, sortable cards: recent-order metrics, orders today, orders this week and custom order statuses. Daily and weekly counts cover the store and use its timezone; weeks start on Monday.
+* **WordPress dashboard widget**: enabled by default in a full-width row, using your account's same selected cards. Turn it off under Settings > Dashboard customization, or hide/collapse it using WordPress's normal dashboard controls.
 * **Orders list** with search, status filter, pagination and bulk status changes (with a confirmation).
 * **Order workspace** with items, photos, SKU and variation details, an exact totals breakdown (items, discount, fees, shipping, tax, refunds), shipping and billing addresses, the customer's checkout note, guest or registered customer, and payment details.
 * **Products and inventory**: browse products, create simple products using Media Library image URLs and update stock.
@@ -24,7 +25,7 @@ KartoDesk gives your team one fast screen for daily order work, without leaving 
 * **Order notes**: read and add private notes or customer-facing notes. The email consequence is shown before a customer note is added.
 * **Shipment tracking** without another plugin: courier, tracking number, optional HTTPS tracking link and shipped date, stored on the order. Optionally add a customer-facing tracking note.
 
-KartoDesk uses WooCommerce's own REST API inside your site as the signed-in user. It needs no API keys, stores no data of its own beyond tracking on the order, and makes no requests to external services.
+KartoDesk uses WooCommerce's own REST API inside your site as the signed-in user. It needs no API keys or additional database and makes no requests to external services. Personal dashboard preferences are saved on your WordPress account, permissions on WordPress roles, and tracking and refund request identifiers on orders.
 
 = Who can use it =
 
@@ -92,6 +93,11 @@ Products, simple product creation, stock, registered customers, order and invent
 KartoDesk does not track users or send telemetry. Its own scripts and styles load locally; product images can use the store's image or CDN URLs. It displays customer details that WooCommerce already stores, only to users who can manage WooCommerce.
 
 == Changelog ==
+
+= 0.1.8 =
+* Add Dashboard customization in Settings: choose and sort up to four overview cards, including today's orders, this week's orders and custom order statuses.
+* Add a native WordPress dashboard widget using the same personal card preferences, enabled by default in its own full-width row. Saved off choices and native hide/collapse controls are respected. Existing dashboard widgets, menus and notices remain unchanged.
+* Use the store timezone for daily and weekly counts; weeks start on Monday.
 
 = 0.1.7 =
 * Add order address editing and refunds with tax breakdowns, refund history and duplicate-request checks.

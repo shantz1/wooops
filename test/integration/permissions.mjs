@@ -13,18 +13,22 @@ import { hashPassword } from "../../src/lib/password.ts";
 
 test("role permissions are enforced by the standalone API", { timeout: 90_000 }, async t => {
   const writes = [];
+  const orderReads = [];
+  let omitCountHeader = false;
   const order = { id: 1, number: "1", status: "processing", currency: "USD", total: "10.00", billing: { email: "buyer@example.invalid" }, meta_data: [], line_items: [] };
   const product = { id: 1, name: "Mock product", type: "simple", manage_stock: true, stock_quantity: 5, date_modified_gmt: "2026-10-01T00:00:00" };
   const store = createServer(async (request, response) => {
     let raw = "";
     for await (const chunk of request) raw += chunk;
     const body = raw ? JSON.parse(raw) : null;
-    const path = new URL(request.url, "http://localhost").pathname;
+    const url = new URL(request.url, "http://localhost");
+    const path = url.pathname;
     if (request.method !== "GET") writes.push(`${request.method} ${path}`);
     response.setHeader("Content-Type", "application/json");
     if (path === "/wp-json/") return response.end(JSON.stringify({ name: "Mock store", timezone_string: "UTC", gmt_offset: 0 }));
     if (path === "/wp-json/wc/v3/orders" || path === "/wp-json/wc/v3/customers" || path === "/wp-json/wc/v3/products") {
-      response.setHeader("X-WP-Total", "1");
+      if (path.endsWith("orders")) orderReads.push(Object.fromEntries(url.searchParams));
+      if (!omitCountHeader) response.setHeader("X-WP-Total", url.searchParams.get("status") === "awaiting-shipment" ? "23" : "1");
       response.setHeader("X-WP-TotalPages", "1");
       return response.end(JSON.stringify(path.endsWith("orders") ? [order] : path.endsWith("products") ? [product] : [{ id: 7, email: "c@example.invalid" }]));
     }
@@ -37,7 +41,7 @@ test("role permissions are enforced by the standalone API", { timeout: 90_000 },
       if (request.method === "PUT") Object.assign(product, body);
       return response.end(JSON.stringify(product));
     }
-    if (path === "/wp-json/wc/v3/reports/orders/totals") return response.end(JSON.stringify([{ slug: "processing", name: "Processing", total: 1 }]));
+    if (path === "/wp-json/wc/v3/reports/orders/totals") return response.end(JSON.stringify([{ slug: "processing", name: "Processing", total: 1 }, { slug: "awaiting-shipment", name: "Awaiting shipment", total: 23 }]));
     if (path === "/wp-json/wc/v3/settings/general") return response.end(JSON.stringify([{ id: "woocommerce_currency", value: "USD" }]));
     response.writeHead(404).end(JSON.stringify({ message: "Not found" }));
   });
@@ -133,7 +137,29 @@ test("role permissions are enforced by the standalone API", { timeout: 90_000 },
     assert.equal((await sam("/api/woo/products", "POST", { name: "New", regular_price: "1.00", status: "draft", manage_stock: false })).status, 403);
     assert.deepEqual(writes, []);
     assert.equal((await sam("/api/woo/orders")).status, 403);
+    const before = orderReads.length;
+    assert.equal((await sam("/api/dashboard/metrics?cards=orders_today")).status, 403);
+    assert.equal(orderReads.length, before, "refused metric requests do not read private orders");
     assert.equal((await sam("/api/woo/order-statuses")).status, 403);
+  });
+
+  await t.test("overview metrics use totals headers, bounded payloads and validated status/date filters", async () => {
+    const pat = as(await signIn("pat", "packer-password-123"));
+    const result = await pat("/api/dashboard/metrics?cards=orders_today,orders_week,status:awaiting-shipment");
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body.counts, { orders_today: 1, orders_week: 1, "status:awaiting-shipment": 23 });
+    const queries = orderReads.slice(-3);
+    assert.ok(queries.every(query => query.per_page === "1" && query._fields === "id"));
+    assert.ok(queries.filter(query => query.after).every(query => query.dates_are_gmt === "true" && query.before));
+    assert.equal(queries.find(query => query.status === "awaiting-shipment").after, undefined);
+    const before = orderReads.length;
+    for (const cards of ["", "recent_value", "status:trash", "orders_today,orders_today", "status:unregistered"]) {
+      assert.equal((await pat(`/api/dashboard/metrics?cards=${cards}`)).status, 400);
+    }
+    assert.equal(orderReads.length, before, "invalid cards do not fetch order data");
+    omitCountHeader = true;
+    try { assert.equal((await pat("/api/dashboard/metrics?cards=orders_today")).status, 502, "missing totals must never display a false zero"); }
+    finally { omitCountHeader = false; }
   });
 
   await t.test("built-in logins keep working: read-only cannot write, administrator sees every role", async () => {

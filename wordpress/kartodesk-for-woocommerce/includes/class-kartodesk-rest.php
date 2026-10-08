@@ -129,6 +129,11 @@ class KartoDesk_Rest {
 		$order   = '/woo/orders/(?P<id>[1-9]\d*)';
 		$product = '/woo/products/(?P<id>[1-9]\d*)';
 		$routes  = array(
+			'/dashboard/preferences' => array(
+				'GET' => array( 'dashboard_preferences', 'signed-in' ),
+				'PUT' => array( 'save_dashboard_preferences', array( 'settings.view' ) ),
+			),
+			'/dashboard/metrics' => array( 'GET' => array( 'dashboard_metrics', array( 'orders.view' ) ) ),
 			'/timezone'           => array( 'GET' => array( 'timezone', 'signed-in' ) ),
 			'/settings'           => array( 'GET' => array( 'settings', 'signed-in' ) ),
 			'/access'             => array(
@@ -204,6 +209,25 @@ class KartoDesk_Rest {
 				return self::error( $error->getMessage(), $error->status );
 			}
 		};
+	}
+
+	/** Personal preferences are shared with the native dashboard widget. */
+	public static function dashboard_preferences() {
+		return new WP_REST_Response( KartoDesk_Dashboard::preferences() );
+	}
+
+	/** Update only the current user, never an id supplied by the browser. */
+	public static function save_dashboard_preferences( $request ) {
+		return new WP_REST_Response( KartoDesk_Dashboard::save_preferences( $request->get_json_params() ) );
+	}
+
+	/** Store-wide counts using the same card definitions as the panel. */
+	public static function dashboard_metrics( $request ) {
+		$cards = $request->get_param( 'cards' );
+		if ( ! is_string( $cards ) ) {
+			throw new KartoDesk_Error( esc_html__( 'Invalid dashboard cards.', 'kartodesk-for-woocommerce' ), 400 );
+		}
+		return new WP_REST_Response( KartoDesk_Dashboard::metrics( explode( ',', $cards ) ) );
 	}
 
 	/**

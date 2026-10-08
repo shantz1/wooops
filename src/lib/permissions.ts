@@ -90,6 +90,8 @@ export function meetsRequirement(requirement: Requirement, granted: readonly str
  * `any` means any signed-in user (e.g. workspace and store details needed by every screen).
  */
 const rules: Rule[] = [
+  { pattern: /^\/api\/dashboard\/preferences$/, methods: { GET: "any", PUT: ["settings.view"] } },
+  { pattern: /^\/api\/dashboard\/metrics$/, methods: { GET: ["orders.view"] } },
   { pattern: /^\/api\/(timezone|settings)$/, methods: { GET: "any" } },
   { pattern: /^\/api\/woo\/connection$/, methods: { GET: ["settings.view"] } },
   { pattern: /^\/api\/reports$/, methods: { GET: ["reports.view"] } },

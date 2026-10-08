@@ -11,3 +11,6 @@ defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 require_once __DIR__ . '/includes/class-kartodesk-access.php';
 
 KartoDesk_Access::remove_all();
+
+// Personal panel/widget preferences contain no store data and can be removed on uninstall.
+delete_metadata( 'user', 0, 'kartodesk_dashboard_preferences', '', true );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DashboardSettings } from "@/components/dashboard-settings";
 import { Palette, Store } from "lucide-react";
 import { AccessSettings, type AccessSummary } from "@/components/access-settings";
 import { ConnectionStatus } from "@/components/connection-status";
@@ -34,10 +35,21 @@ function Appearance() {
 }
 
 export function SettingsPanel() {
+  const [tab, setTab] = useState("general");
+  const [dashboardOpened, setDashboardOpened] = useState(false);
   const inWordPress = Boolean(wordpressRuntime());
   const { data, loading, error, reload } = useRemote<Settings>("/api/settings", "Could not load settings.");
   return <div className="space-y-6">
-    <div><p className="text-sm font-medium text-primary">Workspace</p><h1 className="mt-1 text-2xl font-semibold">Settings</h1><p className="mt-1 text-muted-foreground">Panel appearance, store connection and access.</p></div>
+    <div><p className="text-sm font-medium text-primary">Workspace</p><h1 className="mt-1 text-2xl font-semibold">Settings</h1><p className="mt-1 text-muted-foreground">Appearance, overview cards, store connection and access.</p></div>
+    <div role="tablist" aria-label="Settings sections" className="flex flex-wrap gap-2 border-b pb-3">{[["general", "General"], ["dashboard", "Dashboard customization"]].map(([id, label]) => <button key={id} type="button" id={`settings-tab-${id}`} role="tab" tabIndex={tab === id ? 0 : -1} aria-selected={tab === id} aria-controls={`settings-panel-${id}`} onClick={() => { setTab(id); if (id === "dashboard") setDashboardOpened(true); }} onKeyDown={event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === "Home" ? "general" : event.key === "End" ? "dashboard" : id === "general" ? "dashboard" : "general";
+      setTab(next); if (next === "dashboard") setDashboardOpened(true);
+      document.getElementById(`settings-tab-${next}`)?.focus();
+    }} className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === id ? "bg-primary text-primary-foreground" : "border hover:bg-accent"}`}>{label}</button>)}</div>
+    <div id="settings-panel-dashboard" role="tabpanel" aria-labelledby="settings-tab-dashboard" hidden={tab !== "dashboard"}>{dashboardOpened && <DashboardSettings />}</div>
+    <div id="settings-panel-general" role="tabpanel" aria-labelledby="settings-tab-general" hidden={tab !== "general"}>
     <div className="grid items-start gap-5 lg:grid-cols-2">
       <Appearance />
       <section className="space-y-4 rounded-xl border bg-background p-5 shadow-sm">
@@ -52,6 +64,7 @@ export function SettingsPanel() {
       </section>
       {data && <AccessSettings access={data.access} inWordPress={inWordPress} />}
       <section className="rounded-xl border bg-background p-5 shadow-sm"><h2 className="font-semibold">Customer notifications</h2><p className="mt-3 text-sm text-muted-foreground">Customer-facing notes and shipment messages use the store&apos;s Customer note email. Enable that email and verify the store&apos;s mail delivery. Status changes may send separate store emails.</p><p className="mt-3 text-xs text-muted-foreground">A saved note confirms acceptance by the store, not delivery to the customer. New shipment notifications are off by default.</p></section>
+    </div>
     </div>
   </div>;
 }
