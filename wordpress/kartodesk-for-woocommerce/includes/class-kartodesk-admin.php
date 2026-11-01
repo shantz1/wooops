@@ -82,7 +82,7 @@ class KartoDesk_Admin {
 			wp_die( esc_html__( 'You cannot change these settings.', 'kartodesk-for-woocommerce' ) );
 		}
 		check_admin_referer( 'kartodesk_focus_settings' );
-		$submitted = isset( $_POST['roles'] ) && is_array( $_POST['roles'] ) ? wp_unslash( $_POST['roles'] ) : array();
+		$submitted = isset( $_POST['roles'] ) && is_array( $_POST['roles'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['roles'] ) ) : array();
 		$allowed   = array_keys( wp_roles()->get_names() );
 		$selected  = array();
 		foreach ( $submitted as $role ) {

@@ -425,6 +425,7 @@ class KartoDesk_Rest {
 			'status' => $latest ? ( version_compare( $latest, KARTODESK_VERSION, '>' ) ? 'update_available' : 'up_to_date' ) : 'not_checked',
 			'checked_at' => is_object( $updates ) && ! empty( $updates->last_checked ) ? gmdate( 'c', $updates->last_checked ) : null,
 			'release_url' => 'https://wordpress.org/plugins/kartodesk-for-woocommerce/#developers',
+			// Read-only: reports whether WordPress's own automatic updates are on for this plugin. KartoDesk never changes update behaviour.
 			'auto_updates' => array( 'available' => $available, 'enabled' => in_array( $file, (array) get_site_option( 'auto_update_plugins', array() ), true ),
 				'can_manage' => current_user_can( 'update_plugins' ), 'manage_url' => current_user_can( 'update_plugins' ) ? ( is_multisite() ? network_admin_url( 'plugins.php' ) : admin_url( 'plugins.php' ) ) : null ),
 		) );
