@@ -93,8 +93,9 @@ class KartoDesk_Dashboard {
 		$request = new WP_REST_Request( 'GET', '/wc/v3/orders' );
 		$request->set_query_params( $query );
 		$response = rest_do_request( $request );
+		$status = $response->get_status() >= 400 ? (int) $response->get_status() : 502;
 		if ( $response->is_error() || $response->get_status() >= 400 ) {
-			throw new KartoDesk_Error( esc_html__( 'Order data could not be read. Check your store permissions and retry.', 'kartodesk-for-woocommerce' ), $response->get_status() >= 400 ? $response->get_status() : 502 );
+			throw new KartoDesk_Error( esc_html__( 'Order data could not be read. Check your store permissions and retry.', 'kartodesk-for-woocommerce' ), absint( $status ) );
 		}
 		return $response;
 	}

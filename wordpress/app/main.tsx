@@ -16,6 +16,8 @@ const SettingsPage = lazy(() => import("@/app/settings/page"));
 import { AppShell } from "@/components/app-shell";
 const OrderDetail = lazy(() => import("@/components/order-detail").then(module => ({ default: module.OrderDetail })));
 const PackingSlip = lazy(() => import("@/components/packing-slip").then(module => ({ default: module.PackingSlip })));
+const OrderSummaryPrint = lazy(() => import("@/components/order-summary-print").then(module => ({ default: module.OrderSummaryPrint })));
+const AddressLabel = lazy(() => import("@/components/address-label").then(module => ({ default: module.AddressLabel })));
 import { PanelPreferencesProvider } from "@/components/panel-preferences";
 import { EmptyState } from "@/components/ui/feedback";
 import { HashRouter, useHashPath } from "./router";
@@ -38,6 +40,10 @@ function Screen() {
   if (path === "/settings") return <SettingsPage />;
   const slip = /^\/orders\/([1-9]\d*)\/packing-slip$/.exec(path);
   if (slip) return <PackingSlip key={slip[1]} id={slip[1]} />;
+  const summary = /^\/orders\/([1-9]\d*)\/summary$/.exec(path);
+  if (summary) return <OrderSummaryPrint key={summary[1]} id={summary[1]} />;
+  const label = /^\/orders\/([1-9]\d*)\/label$/.exec(path);
+  if (label) return <AddressLabel key={label[1]} id={label[1]} />;
   const order = /^\/orders\/([1-9]\d*)$/.exec(path);
   if (order) return <AppShell><OrderDetail key={order[1]} id={order[1]} /></AppShell>;
   return (

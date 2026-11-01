@@ -14,3 +14,7 @@ KartoDesk_Access::remove_all();
 
 // Personal panel/widget preferences contain no store data and can be removed on uninstall.
 delete_metadata( 'user', 0, 'kartodesk_dashboard_preferences', '', true );
+
+// The review request's timestamp and each user's dismissal contain no store data.
+delete_option( 'kartodesk_first_seen' );
+delete_metadata( 'user', 0, 'kartodesk_review_dismissed', '', true );

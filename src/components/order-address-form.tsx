@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy } from "lucide-react";
 import { TextField, TextAreaField } from "@/components/ui/field";
 import { Notice } from "@/components/ui/feedback";
@@ -27,6 +27,7 @@ function countChanges(original: WooAddress, draft: WooAddress, fields: (keyof Wo
 
 export function OrderAddressForm({ kind, order, canEdit, onSaved }: OrderAddressFormProps) {
   const address = kind === "billing" ? order.billing : order.shipping;
+  const [baseline, setBaseline] = useState({ address, note: order.customer_note || "", token: order.edit_token });
   const [draft, setDraft] = useState<WooAddress & { customer_note?: string }>({
     ...address,
     ...(kind === "shipping" && { customer_note: order.customer_note || "" }),
@@ -40,7 +41,13 @@ export function OrderAddressForm({ kind, order, canEdit, onSaved }: OrderAddress
     ? ["first_name", "last_name", "company", "address_1", "address_2", "city", "state", "postcode", "country", "phone", "email"]
     : ["first_name", "last_name", "company", "address_1", "address_2", "city", "state", "postcode", "country", "phone"];
 
-  const changed = canEdit ? countChanges(address, draft, fields) + (kind === "shipping" && (draft.customer_note || "") !== (order.customer_note || "") ? 1 : 0) : 0;
+  const changed = canEdit ? countChanges(baseline.address, draft, fields) + (kind === "shipping" && (draft.customer_note || "") !== baseline.note ? 1 : 0) : 0;
+  useEffect(() => {
+    if (changed || baseline.token === order.edit_token) return;
+    let active = true;
+    queueMicrotask(() => { if (active) { setDraft({ ...address, ...(kind === "shipping" && { customer_note: order.customer_note || "" }) }); setBaseline({ address, note: order.customer_note || "", token: order.edit_token }); } });
+    return () => { active = false; };
+  }, [address, baseline.token, changed, kind, order.customer_note, order.edit_token]);
 
   const copyFromBilling = () => {
     setDraft(prev => ({
@@ -77,6 +84,7 @@ export function OrderAddressForm({ kind, order, canEdit, onSaved }: OrderAddress
 
   const save = async () => {
     if (!canEdit || saving || changed === 0 || !validate()) return;
+    if (!baseline.token) { setResult({ tone: "error", message: "Reload the order before editing it." }); return; }
     setSaving(true);
     setResult(null);
 
@@ -85,7 +93,7 @@ export function OrderAddressForm({ kind, order, canEdit, onSaved }: OrderAddress
     const addressPayload: Record<string, string> = {};
 
     for (const field of fields) {
-      if (address[field] !== draft[field]) {
+      if (baseline.address[field] !== draft[field]) {
         addressPayload[field] = draft[field] ?? "";
       }
     }
@@ -94,7 +102,7 @@ export function OrderAddressForm({ kind, order, canEdit, onSaved }: OrderAddress
       payload[addressKey] = addressPayload;
     }
 
-    if (kind === "shipping" && (draft.customer_note || "") !== (order.customer_note || "")) {
+    if (kind === "shipping" && (draft.customer_note || "") !== baseline.note) {
       payload.customer_note = draft.customer_note || "";
     }
 
@@ -104,12 +112,14 @@ export function OrderAddressForm({ kind, order, canEdit, onSaved }: OrderAddress
     }
 
     try {
+      payload.if_match = baseline.token;
       const updated = await fetchJson<WooOrder>(`/api/woo/orders/${order.id}`, { method: "PATCH", json: payload });
       setDraft({
         ...updated[addressKey as "billing" | "shipping"],
         ...(kind === "shipping" && { customer_note: updated.customer_note || "" }),
       });
       onSaved(updated);
+      setBaseline({ address: updated[addressKey], note: updated.customer_note || "", token: updated.edit_token });
       setResult({ tone: "success", message: `${isBilling ? "Billing" : "Shipping"} address updated.` });
     } catch (cause) {
       setResult({ tone: "error", message: errorMessage(cause, "Update failed.") });
@@ -119,6 +129,7 @@ export function OrderAddressForm({ kind, order, canEdit, onSaved }: OrderAddress
   };
 
   const discard = () => {
+    setBaseline({ address, note: order.customer_note || "", token: order.edit_token });
     setDraft({
       ...address,
       ...(kind === "shipping" && { customer_note: order.customer_note || "" }),

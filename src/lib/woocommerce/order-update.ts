@@ -7,6 +7,14 @@ export type OrderUpdate = {
   billing?: Record<string, string>;
   shipping?: Record<string, string>;
   customer_note?: string;
+  /** 0 returns the order to guest checkout; any other id must be a registered customer (checked by the route). */
+  customer_id?: number;
+  /** With a customer_id: copy that customer's saved billing and shipping address onto the order. Off by default. */
+  replace_addresses?: boolean;
+  /** The order's `date_modified_gmt` as the editor saw it. The route refuses the edit when the order has changed since. */
+  if_unmodified_since?: string;
+  /** Opaque revision returned with the order; required for ownership changes. */
+  if_match?: string;
 };
 export type OrderUpdateResult = { ok: true; update: OrderUpdate } | { ok: false; error: string };
 
@@ -36,7 +44,7 @@ function cleanAddress(value: unknown, allowed: readonly string[], label: string)
 export async function parseOrderUpdate(body: unknown, isSettableStatus: (status: unknown) => Promise<boolean> | boolean): Promise<OrderUpdateResult> {
   if (!plainObject(body)) return { ok: false, error: "Invalid request." };
   const keys = Object.keys(body);
-  if (keys.length === 0 || keys.some(key => !["status", "billing", "shipping", "customer_note"].includes(key))) return { ok: false, error: "Nothing valid to update." };
+  if (keys.length === 0 || keys.some(key => !["status", "billing", "shipping", "customer_note", "customer_id", "replace_addresses", "if_unmodified_since", "if_match"].includes(key))) return { ok: false, error: "Nothing valid to update." };
   const update: OrderUpdate = {};
   if ("status" in body) {
     if (!(await isSettableStatus(body.status))) return { ok: false, error: "Invalid order ID or status." };
@@ -53,5 +61,40 @@ export async function parseOrderUpdate(body: unknown, isSettableStatus: (status:
     if (typeof body.customer_note !== "string" || body.customer_note.length > maxNote) return { ok: false, error: "The customer note is too long." };
     update.customer_note = body.customer_note.trim();
   }
+  if ("customer_id" in body) {
+    if (!Number.isSafeInteger(body.customer_id) || (body.customer_id as number) < 0) return { ok: false, error: "Choose a valid customer." };
+    update.customer_id = body.customer_id as number;
+  }
+  if ("replace_addresses" in body) {
+    if (body.replace_addresses !== true || !update.customer_id) return { ok: false, error: "Addresses can only be replaced when assigning a registered customer." };
+    update.replace_addresses = true;
+  }
+  if ("if_unmodified_since" in body) {
+    if (typeof body.if_unmodified_since !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(body.if_unmodified_since)) return { ok: false, error: "Invalid request." };
+    update.if_unmodified_since = body.if_unmodified_since;
+  }
+  // The token only guards other changes; on its own there is nothing to update.
+  if ("if_match" in body) {
+    if (typeof body.if_match !== "string" || !/^[a-f0-9]{64}$/.test(body.if_match)) return { ok: false, error: "Invalid order revision. Reload the order." };
+    update.if_match = body.if_match;
+  }
+  if (update.customer_id !== undefined && !update.if_match) return { ok: false, error: "Reload the order before changing its customer." };
+  if (Object.keys(update).every(key => ["if_unmodified_since", "if_match"].includes(key))) return { ok: false, error: "Nothing valid to update." };
   return { ok: true, update };
+}
+
+/** The whitelisted, trimmed address fields of a saved customer address (anything else is ignored). */
+export function savedAddress(value: unknown, allowed: readonly string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (typeof value !== "object" || value === null) return out;
+  for (const key of allowed) {
+    const raw = (value as Record<string, unknown>)[key];
+    out[key] = typeof raw === "string" ? raw.trim().slice(0, 200) : "";
+  }
+  return out;
+}
+
+/** True when the order was changed after the editor loaded it (WooCommerce stamps `date_modified_gmt` on every save). */
+export function isStale(token: string | undefined, currentModifiedGmt: string | undefined): boolean {
+  return token !== undefined && token !== currentModifiedGmt;
 }

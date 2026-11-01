@@ -4,13 +4,16 @@ import { usePanelPreferences } from "@/components/panel-preferences";
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { ArrowLeft, Check, Copy, Loader2, Mail, MapPin, Phone, Printer, Save, UserRound } from "lucide-react";
+import { ArrowLeft, Check, Copy, FileText, Loader2, Mail, MapPin, Phone, Printer, Save, Tag, UserRound } from "lucide-react";
+import { OrderActivity } from "@/components/order-activity";
 import { OrderItems } from "@/components/order-items";
 import { OrderNotes } from "@/components/order-notes";
 import { OrderPager } from "@/components/order-pager";
+import { OrderResendEmail } from "@/components/order-resend-email";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { ShipmentTracking } from "@/components/shipment-tracking";
 import { OrderAddressForm } from "@/components/order-address-form";
+import { OrderCustomer } from "@/components/order-customer";
 import { OrderRefunds } from "@/components/order-refunds";
 import { ErrorState, LoadingState, Notice, RetryButton } from "@/components/ui/feedback";
 import { errorMessage, fetchJson } from "@/lib/fetch-json";
@@ -27,6 +30,7 @@ function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooO
   const { can } = usePanelPreferences();
   const canWrite = can("orders.status");
   const [status, setStatus] = useState<WooOrderStatus>(order.status);
+  const [editToken, setEditToken] = useState(order.edit_token);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const statuses = useOrderStatuses();
@@ -37,12 +41,14 @@ function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooO
 
   async function save() {
     if (!canWrite || saving || status === order.status) return;
+    if (!editToken) { setResult({ tone: "error", message: "Reload the order before editing it." }); return; }
     setSaving(true);
     setResult(null);
     try {
-      const updated = await fetchJson<WooOrder>(`/api/woo/orders/${order.id}`, { method: "PATCH", json: { status } });
+      const updated = await fetchJson<WooOrder>(`/api/woo/orders/${order.id}`, { method: "PATCH", json: { status, if_match: editToken } });
       onSaved(updated);
       setStatus(updated.status);
+      setEditToken(updated.edit_token);
       refreshOrderStatuses();
       setResult({ tone: "success", message: `Status is now ${statusName(statuses, updated.status)}.` });
     } catch (cause) {
@@ -57,7 +63,7 @@ function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooO
       <h2 id="status-heading" className="font-semibold">Order status</h2>
       {statusError && <Notice tone="warning" className="mt-3" action={<RetryButton onRetry={refreshOrderStatuses} />}>{statusError}</Notice>}
       <label htmlFor="order-status" className="sr-only">New status</label>
-      <select disabled={!canWrite} id="order-status" value={status} onChange={event => setStatus(event.target.value)} className="mt-4 h-10 w-full rounded-lg border bg-background px-3 text-sm">
+      <select disabled={!canWrite} id="order-status" value={status} onChange={event => { setStatus(event.target.value); setEditToken(order.edit_token); }} className="mt-4 h-10 w-full rounded-lg border bg-background px-3 text-sm">
         {!currentListed && <option value={order.status} disabled>{statusName(statuses, order.status)} (current)</option>}
         {options.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}
       </select>
@@ -73,7 +79,7 @@ function StatusCard({ order, onSaved }: { order: WooOrder; onSaved: (order: WooO
   );
 }
 
-type SectionTab = "Summary" | "Shipping" | "Billing" | "Payments" | "Fulfilment" | "Notes";
+type SectionTab = "Summary" | "Shipping" | "Billing" | "Payments" | "Fulfilment" | "Notes" | "Activity";
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
@@ -98,6 +104,7 @@ export function OrderDetail({ id }: { id: string }) {
   // A section stays mounted once opened (hidden when inactive), so unsaved address edits survive switching tabs.
   const [visited, setVisited] = useState<SectionTab[]>(["Summary"]);
   const setActiveTab = (tab: SectionTab) => {
+    if (tab === "Activity") setNotesVersion(current => current + 1);
     setActiveTabState(tab);
     setVisited(current => (current.includes(tab) ? current : [...current, tab]));
   };
@@ -109,6 +116,7 @@ export function OrderDetail({ id }: { id: string }) {
     Payments: null,
     Fulfilment: null,
     Notes: null,
+    Activity: null,
   });
 
   // Return to the filtered list page the user came from, when this tab has one.
@@ -127,7 +135,7 @@ export function OrderDetail({ id }: { id: string }) {
   const customerName = [order.billing.first_name, order.billing.last_name].filter(Boolean).join(" ") || "No billing name";
   const canEdit = can("orders.status");
 
-  const tabs: SectionTab[] = ["Summary", "Shipping", "Billing", "Payments", "Fulfilment", "Notes"];
+  const tabs: SectionTab[] = ["Summary", "Shipping", "Billing", "Payments", "Fulfilment", "Notes", "Activity"];
 
   const handleTabClick = (tab: SectionTab) => {
     setActiveTab(tab);
@@ -172,7 +180,10 @@ export function OrderDetail({ id }: { id: string }) {
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <OrderPager id={id} />
-        <Link href={`/orders/${id}/packing-slip`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm hover:bg-accent"><Printer className="size-4" aria-hidden="true" />Packing slip</Link>
+        <Link href={`/orders/${id}/packing-slip`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"><Printer className="size-4" aria-hidden="true" />Packing slip</Link>
+        <Link href={`/orders/${id}/summary`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"><FileText className="size-4" aria-hidden="true" />Order summary</Link>
+        <Link href={`/orders/${id}/label`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"><Tag className="size-4" aria-hidden="true" />Shipping label</Link>
+        <OrderResendEmail order={order} onAccepted={refreshNotes} />
         <RetryButton onRetry={reload} busy={loading} label="Refresh order" />
       </div>
     </div>
@@ -222,6 +233,7 @@ export function OrderDetail({ id }: { id: string }) {
               <p className="mt-1 text-xs text-muted-foreground">{guest
                 ? "Guest checkout — no registered account. Other orders with the same email are not linked automatically."
                 : `Registered customer account #${order.customer_id}`}</p>
+              <OrderCustomer order={order} onSaved={setOrder} onReload={reload} />
               <div className="mt-3 space-y-1.5 text-sm">
                 {order.billing.email
                   ? <a href={`mailto:${order.billing.email}`} className="flex items-center gap-1.5 break-all underline-offset-2 hover:underline"><Mail className="size-3.5 shrink-0" aria-hidden="true" />{order.billing.email}</a>
@@ -301,7 +313,7 @@ export function OrderDetail({ id }: { id: string }) {
 
       {visited.includes("Payments") && (
         <div role="tabpanel" id="Payments-panel" aria-labelledby="tab-Payments" hidden={activeTab !== "Payments"}>
-        <OrderRefunds order={order} onOrderChange={setOrder} />
+        <OrderRefunds order={order} onOrderChange={updated => { setOrder(updated); refreshNotes(); }} />
         </div>
       )}
 
@@ -316,6 +328,12 @@ export function OrderDetail({ id }: { id: string }) {
       {visited.includes("Notes") && (
         <div role="tabpanel" id="Notes-panel" aria-labelledby="tab-Notes" hidden={activeTab !== "Notes"}>
         <OrderNotes orderId={id} customerEmail={order.billing.email || undefined} refreshKey={notesVersion} />
+        </div>
+      )}
+
+      {visited.includes("Activity") && (
+        <div role="tabpanel" id="Activity-panel" aria-labelledby="tab-Activity" hidden={activeTab !== "Activity"}>
+        <OrderActivity order={order} refreshKey={notesVersion} />
         </div>
       )}
     </div>

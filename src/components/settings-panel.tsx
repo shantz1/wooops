@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DashboardSettings } from "@/components/dashboard-settings";
+import { UpdateSettings } from "@/components/update-settings";
 import { Palette, Store } from "lucide-react";
 import { AccessSettings, type AccessSummary } from "@/components/access-settings";
 import { ConnectionStatus } from "@/components/connection-status";
@@ -37,18 +38,20 @@ function Appearance() {
 export function SettingsPanel() {
   const [tab, setTab] = useState("general");
   const [dashboardOpened, setDashboardOpened] = useState(false);
+  const sections = [["general", "General"], ["dashboard", "Dashboard customization"], ["updates", "Updates"]];
   const inWordPress = Boolean(wordpressRuntime());
   const { data, loading, error, reload } = useRemote<Settings>("/api/settings", "Could not load settings.");
   return <div className="space-y-6">
     <div><p className="text-sm font-medium text-primary">Workspace</p><h1 className="mt-1 text-2xl font-semibold">Settings</h1><p className="mt-1 text-muted-foreground">Appearance, overview cards, store connection and access.</p></div>
-    <div role="tablist" aria-label="Settings sections" className="flex flex-wrap gap-2 border-b pb-3">{[["general", "General"], ["dashboard", "Dashboard customization"]].map(([id, label]) => <button key={id} type="button" id={`settings-tab-${id}`} role="tab" tabIndex={tab === id ? 0 : -1} aria-selected={tab === id} aria-controls={`settings-panel-${id}`} onClick={() => { setTab(id); if (id === "dashboard") setDashboardOpened(true); }} onKeyDown={event => {
+    <div role="tablist" aria-label="Settings sections" className="flex flex-wrap gap-2 border-b pb-3">{sections.map(([id, label], index) => <button key={id} type="button" id={`settings-tab-${id}`} role="tab" tabIndex={tab === id ? 0 : -1} aria-selected={tab === id} aria-controls={`settings-panel-${id}`} onClick={() => { setTab(id); if (id === "dashboard") setDashboardOpened(true); }} onKeyDown={event => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       event.preventDefault();
-      const next = event.key === "Home" ? "general" : event.key === "End" ? "dashboard" : id === "general" ? "dashboard" : "general";
+      const next = sections[event.key === "Home" ? 0 : event.key === "End" ? sections.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + sections.length) % sections.length][0];
       setTab(next); if (next === "dashboard") setDashboardOpened(true);
       document.getElementById(`settings-tab-${next}`)?.focus();
     }} className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === id ? "bg-primary text-primary-foreground" : "border hover:bg-accent"}`}>{label}</button>)}</div>
     <div id="settings-panel-dashboard" role="tabpanel" aria-labelledby="settings-tab-dashboard" hidden={tab !== "dashboard"}>{dashboardOpened && <DashboardSettings />}</div>
+    <div id="settings-panel-updates" role="tabpanel" aria-labelledby="settings-tab-updates" hidden={tab !== "updates"}>{tab === "updates" && <UpdateSettings />}</div>
     <div id="settings-panel-general" role="tabpanel" aria-labelledby="settings-tab-general" hidden={tab !== "general"}>
     <div className="grid items-start gap-5 lg:grid-cols-2">
       <Appearance />

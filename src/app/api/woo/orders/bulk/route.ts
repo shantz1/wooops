@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { wooFetch } from "@/lib/woocommerce/client";
 import { clearOrderStatuses, isSettableStatus } from "@/lib/woocommerce/order-statuses";
 import { isId } from "@/lib/woocommerce/validation";
+import { withOrderLock } from "@/lib/woocommerce/order-lock";
 
 export async function POST(request: NextRequest) {
   const denied = authorizeRequest(request);
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
   try {
     const results = await Promise.allSettled(body.ids.map((id: number) =>
-      wooFetch(`orders/${id}`, { method: "PUT", body: JSON.stringify({ status: body.status }) }),
+      withOrderLock(`order-${id}`, () => wooFetch(`orders/${id}`, { method: "PUT", body: JSON.stringify({ status: body.status }) })),
     ));
     const updated = results.filter(result => result.status === "fulfilled").length;
     clearOrderStatuses();

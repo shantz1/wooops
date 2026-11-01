@@ -6,8 +6,8 @@
 export const permissionList = [
   { key: "orders.view", capability: "kartodesk_view_orders", group: "Orders", label: "View orders",
     description: "Overview, order list and details, notes, tracking and packing slips." },
-  { key: "orders.status", capability: "kartodesk_change_order_status", group: "Orders", label: "Change order status",
-    description: "Single and bulk status changes. The store may email customers about status changes." },
+  { key: "orders.status", capability: "kartodesk_change_order_status", group: "Orders", label: "Edit orders and status",
+    description: "Status, billing/shipping addresses and checkout notes. Customer assignment also needs order-view and customer-view access. Status changes may send store emails." },
   { key: "orders.notes", capability: "kartodesk_add_order_notes", group: "Orders", label: "Add private notes",
     description: "Staff-only order notes." },
   { key: "orders.notify", capability: "kartodesk_notify_customers", group: "Orders", label: "Notify customers",
@@ -90,6 +90,7 @@ export function meetsRequirement(requirement: Requirement, granted: readonly str
  * `any` means any signed-in user (e.g. workspace and store details needed by every screen).
  */
 const rules: Rule[] = [
+  { pattern: /^\/api\/updates$/, methods: { GET: ["settings.view"] } },
   { pattern: /^\/api\/dashboard\/preferences$/, methods: { GET: "any", PUT: ["settings.view"] } },
   { pattern: /^\/api\/dashboard\/metrics$/, methods: { GET: ["orders.view"] } },
   { pattern: /^\/api\/(timezone|settings)$/, methods: { GET: "any" } },
@@ -101,6 +102,7 @@ const rules: Rule[] = [
   { pattern: /^\/api\/woo\/orders\/bulk$/, methods: { POST: ["orders.status"] } },
   { pattern: /^\/api\/woo\/orders\/\d+$/, methods: { GET: ["orders.view"], PATCH: ["orders.status"], DELETE: ["orders.status"] } },
   { pattern: /^\/api\/woo\/orders\/\d+\/notes$/, methods: { GET: ["orders.view"], POST: ["orders.notes"] } },
+  { pattern: /^\/api\/woo\/orders\/\d+\/email$/, methods: { GET: ["orders.view"], POST: ["orders.view", "orders.notify"] } },
   { pattern: /^\/api\/woo\/orders\/\d+\/refunds$/, methods: { GET: ["orders.view"], POST: ["orders.refund"] } },
   { pattern: /^\/api\/woo\/orders\/\d+\/shipments$/, methods: { GET: ["orders.view"], POST: ["orders.shipments"], PATCH: ["orders.notify"], DELETE: ["orders.shipments"] } },
   { pattern: /^\/api\/woo\/products$/, methods: { GET: ["products.view"], POST: ["products.edit"] } },

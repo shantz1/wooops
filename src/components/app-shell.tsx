@@ -1,4 +1,5 @@
 "use client";
+import { UpdateNotification } from "@/components/update-notification";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -240,7 +241,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="rounded-full border border-primary/20 px-3 py-1 text-xs font-medium text-primary">Store workspace</div>
         </header>
-        <main id="main" tabIndex={-1} className="mx-auto max-w-[1500px] p-4 outline-none sm:p-5 lg:p-8"><ScreenGate pathname={pathname}>{children}</ScreenGate></main>
+        <main id="main" tabIndex={-1} className="mx-auto max-w-[1500px] p-4 outline-none sm:p-5 lg:p-8"><UpdateNotification /><ScreenGate pathname={pathname}>{children}</ScreenGate></main>
       </div>
     </div>
   );

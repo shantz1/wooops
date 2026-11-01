@@ -129,6 +129,7 @@ class KartoDesk_Rest {
 		$order   = '/woo/orders/(?P<id>[1-9]\d*)';
 		$product = '/woo/products/(?P<id>[1-9]\d*)';
 		$routes  = array(
+			'/updates' => array( 'GET' => array( 'updates', array( 'settings.view' ) ) ),
 			'/dashboard/preferences' => array(
 				'GET' => array( 'dashboard_preferences', 'signed-in' ),
 				'PUT' => array( 'save_dashboard_preferences', array( 'settings.view' ) ),
@@ -168,6 +169,10 @@ class KartoDesk_Rest {
 				'GET'  => array( 'list_notes', array( 'orders.view' ) ),
 				'POST' => array( 'add_note', array( 'orders.notes' ) ),
 			),
+			$order . '/email'     => array(
+				'GET'  => array( 'email_probe', array( 'orders.view' ) ),
+				'POST' => array( 'send_order_email', array( 'orders.view', 'orders.notify' ) ),
+			),
 			$order . '/refunds'   => array(
 				'GET'  => array( 'list_refunds', array( 'orders.view' ) ),
 				'POST' => array( 'create_refund', array( 'orders.refund' ) ),
@@ -201,7 +206,7 @@ class KartoDesk_Rest {
 	private static function handler( $callback ) {
 		return static function ( WP_REST_Request $request ) use ( $callback ) {
 			try {
-				if ( strlen( $request->get_body() ) > 65536 ) {
+				if ( strlen( (string) $request->get_body() ) > 65536 ) {
 					return self::error( esc_html__( 'Request body is too large.', 'kartodesk-for-woocommerce' ), 413 );
 				}
 				return call_user_func( array( __CLASS__, $callback ), $request );
@@ -405,6 +410,26 @@ class KartoDesk_Rest {
 		);
 	}
 
+	/** Read WordPress's own update state; administrators manage updates through its native Plugins screen. */
+	public static function updates() {
+		require_once ABSPATH . 'wp-admin/includes/update.php';
+		$file = plugin_basename( KARTODESK_FILE );
+		$updates = get_site_transient( 'update_plugins' );
+		$new = is_object( $updates ) && isset( $updates->response[ $file ] ) ? $updates->response[ $file ] : null;
+		$known = is_object( $updates ) && isset( $updates->no_update[ $file ] ) ? $updates->no_update[ $file ] : null;
+		$latest = is_object( $new ) && isset( $new->new_version ) ? (string) $new->new_version : ( is_object( $known ) && isset( $known->new_version ) ? (string) $known->new_version : null );
+		$available = wp_is_auto_update_enabled_for_type( 'plugin' ) && wp_is_file_mod_allowed( 'automatic_updater' );
+		// Read-only native preferences: no updater filter, replacement provider or installer is registered here.
+		return new WP_REST_Response( array(
+			'platform' => 'wordpress', 'current_version' => KARTODESK_VERSION, 'latest_version' => $latest,
+			'status' => $latest ? ( version_compare( $latest, KARTODESK_VERSION, '>' ) ? 'update_available' : 'up_to_date' ) : 'not_checked',
+			'checked_at' => is_object( $updates ) && ! empty( $updates->last_checked ) ? gmdate( 'c', $updates->last_checked ) : null,
+			'release_url' => 'https://wordpress.org/plugins/kartodesk-for-woocommerce/#developers',
+			'auto_updates' => array( 'available' => $available, 'enabled' => in_array( $file, (array) get_site_option( 'auto_update_plugins', array() ), true ),
+				'can_manage' => current_user_can( 'update_plugins' ), 'manage_url' => current_user_can( 'update_plugins' ) ? ( is_multisite() ? network_admin_url( 'plugins.php' ) : admin_url( 'plugins.php' ) ) : null ),
+		) );
+	}
+
 	/**
 	 * Every registered order status without the wc- prefix, including custom statuses from extensions.
 	 *
@@ -500,7 +525,38 @@ class KartoDesk_Rest {
 	 */
 	public static function get_order( WP_REST_Request $request ) {
 		list( $order ) = self::wc( 'GET', 'orders/' . (int) $request['id'] );
-		return new WP_REST_Response( $order );
+		return new WP_REST_Response( self::with_order_revision( $order ) );
+	}
+
+	/** Include relevant state, not just WooCommerce's one-second modified timestamp. */
+	private static function with_order_revision( $order ) {
+		$fields = array( 'id', 'status', 'customer_id', 'billing', 'shipping', 'customer_note', 'date_modified_gmt', 'currency', 'total', 'total_tax', 'line_items', 'shipping_lines', 'fee_lines', 'coupon_lines', 'refunds', 'payment_method', 'transaction_id', 'meta_data' );
+		$state = array();
+		foreach ( $fields as $field ) { $state[ $field ] = isset( $order[ $field ] ) ? $order[ $field ] : null; }
+		$order['edit_token'] = hash( 'sha256', wp_json_encode( self::canonical_order_state( $state ) ) );
+		return $order;
+	}
+
+	/** Make object key ordering irrelevant to revisions; preserve list ordering. */
+	private static function canonical_order_state( $value ) {
+		if ( ! is_array( $value ) ) { return $value; }
+		if ( array_values( $value ) !== $value ) { ksort( $value, SORT_STRING ); }
+		return array_map( array( __CLASS__, 'canonical_order_state' ), $value );
+	}
+
+	/** Serialize panel order edits and resends across PHP workers. External store writers remain independent. */
+	private static function with_order_edit_lock( $id, $work ) {
+		global $wpdb;
+		$lock = 'kartodesk_order_' . $id;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		if ( '1' !== (string) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK( %s, 5 )', $lock ) ) ) {
+			throw new KartoDesk_Error( esc_html__( 'Another edit for this order is in progress. Reload and retry.', 'kartodesk-for-woocommerce' ), 409 );
+		}
+		try { return $work(); }
+		finally {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK( %s )', $lock ) );
+		}
 	}
 
 	/**
@@ -514,8 +570,46 @@ class KartoDesk_Rest {
 		if ( is_string( $update ) ) {
 			return self::error( $update, 400 );
 		}
-		list( $order ) = self::wc( 'PUT', 'orders/' . (int) $request['id'], array(), $update );
-		return new WP_REST_Response( $order );
+		$id    = (int) $request['id'];
+		return self::with_order_edit_lock( $id, static function () use ( $update, $id ) {
+			$since = isset( $update['if_unmodified_since'] ) ? $update['if_unmodified_since'] : null;
+			$revision = isset( $update['if_match'] ) ? $update['if_match'] : null;
+			$replace = ! empty( $update['replace_addresses'] );
+			unset( $update['if_unmodified_since'], $update['if_match'], $update['replace_addresses'] );
+			if ( array_key_exists( 'customer_id', $update ) ) {
+				self::require_permission( 'orders.view' );
+				if ( $update['customer_id'] > 0 ) { self::require_permission( 'customers.view' ); }
+			}
+			if ( $replace ) {
+				// Reading a customer's saved addresses is a customer permission of its own.
+				self::require_permission( 'customers.view' );
+			}
+			if ( ! empty( $update['customer_id'] ) ) {
+				// Only registered customers can be assigned; this also rejects ids of staff or deleted accounts.
+				list( $customer ) = self::wc( 'GET', 'customers/' . $update['customer_id'] );
+				if ( ! isset( $customer['id'], $customer['role'] ) || $customer['id'] !== $update['customer_id'] || 'customer' !== $customer['role'] ) {
+					return self::error( __( 'Choose a registered customer.', 'kartodesk-for-woocommerce' ), 400 );
+				}
+				if ( $replace ) {
+					$billing_keys  = array( 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'postcode', 'country', 'phone', 'email' );
+					$shipping_keys = array_diff( $billing_keys, array( 'email' ) );
+					$update['billing']  = self::saved_address( isset( $customer['billing'] ) ? $customer['billing'] : array(), $billing_keys );
+					$update['shipping'] = self::saved_address( isset( $customer['shipping'] ) ? $customer['shipping'] : array(), $shipping_keys );
+					$validated = self::parse_order_update( array( 'billing' => $update['billing'], 'shipping' => $update['shipping'] ) );
+					if ( is_string( $validated ) ) { return self::error( $validated, 400 ); }
+					$update = array_merge( $update, $validated );
+				}
+			}
+			if ( null !== $since || null !== $revision ) {
+				list( $current ) = self::wc( 'GET', 'orders/' . $id );
+				$state = self::with_order_revision( $current );
+				if ( ( null !== $since && ( ! isset( $current['date_modified_gmt'] ) || $current['date_modified_gmt'] !== $since ) ) || ( null !== $revision && ! hash_equals( $state['edit_token'], $revision ) ) ) {
+					return new WP_REST_Response( array( 'error' => __( 'This order was changed after you opened it. Reload it and make the change again.', 'kartodesk-for-woocommerce' ), 'stale' => true ), 409 );
+				}
+			}
+			list( $order ) = self::wc( 'PUT', 'orders/' . $id, array(), $update );
+			return new WP_REST_Response( self::with_order_revision( $order ) );
+		} );
 	}
 
 	/**
@@ -526,7 +620,7 @@ class KartoDesk_Rest {
 	 */
 	private static function parse_order_update( $body ) {
 		$address_fields = array( 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'postcode', 'country', 'phone' );
-		if ( ! is_array( $body ) || array() === $body || array_diff( array_keys( $body ), array( 'status', 'billing', 'shipping', 'customer_note' ) ) ) {
+		if ( ! is_array( $body ) || array() === $body || array_diff( array_keys( $body ), array( 'status', 'billing', 'shipping', 'customer_note', 'customer_id', 'replace_addresses', 'if_unmodified_since', 'if_match' ) ) ) {
 			return __( 'Nothing valid to update.', 'kartodesk-for-woocommerce' );
 		}
 		$update = array();
@@ -572,6 +666,33 @@ class KartoDesk_Rest {
 			}
 			$update['customer_note'] = trim( $body['customer_note'] );
 		}
+		if ( array_key_exists( 'customer_id', $body ) ) {
+			if ( ! is_int( $body['customer_id'] ) || $body['customer_id'] < 0 ) {
+				return __( 'Choose a valid customer.', 'kartodesk-for-woocommerce' );
+			}
+			$update['customer_id'] = $body['customer_id'];
+		}
+		if ( array_key_exists( 'replace_addresses', $body ) ) {
+			if ( true !== $body['replace_addresses'] || empty( $update['customer_id'] ) ) {
+				return __( 'Addresses can only be replaced when assigning a registered customer.', 'kartodesk-for-woocommerce' );
+			}
+			$update['replace_addresses'] = true;
+		}
+		if ( array_key_exists( 'if_unmodified_since', $body ) ) {
+			if ( ! is_string( $body['if_unmodified_since'] ) || ! preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/', $body['if_unmodified_since'] ) ) {
+				return __( 'Invalid request.', 'kartodesk-for-woocommerce' );
+			}
+			$update['if_unmodified_since'] = $body['if_unmodified_since'];
+		}
+		if ( array_key_exists( 'if_match', $body ) ) {
+			if ( ! is_string( $body['if_match'] ) || ! preg_match( '/^[a-f0-9]{64}$/D', $body['if_match'] ) ) { return __( 'Invalid order revision. Reload the order.', 'kartodesk-for-woocommerce' ); }
+			$update['if_match'] = $body['if_match'];
+		}
+		if ( array_key_exists( 'customer_id', $update ) && ! isset( $update['if_match'] ) ) { return __( 'Reload the order before changing its customer.', 'kartodesk-for-woocommerce' ); }
+		// Tokens only guard other changes; on their own there is nothing to update.
+		if ( ! array_diff( array_keys( $update ), array( 'if_unmodified_since', 'if_match' ) ) ) {
+			return __( 'Nothing valid to update.', 'kartodesk-for-woocommerce' );
+		}
 		return $update;
 	}
 
@@ -598,7 +719,7 @@ class KartoDesk_Rest {
 		$updated = 0;
 		foreach ( $ids as $id ) {
 			try {
-				self::wc( 'PUT', 'orders/' . (int) $id, array(), array( 'status' => $status ) );
+				self::with_order_edit_lock( (int) $id, static function () use ( $id, $status ) { return self::wc( 'PUT', 'orders/' . (int) $id, array(), array( 'status' => $status ) ); } );
 				++$updated;
 			} catch ( KartoDesk_Error $error ) {
 				continue;
@@ -648,6 +769,100 @@ class KartoDesk_Rest {
 			array( 'note' => trim( $note ), 'customer_note' => true === $customer_note )
 		);
 		return new WP_REST_Response( $created, 201 );
+	}
+
+	/**
+	 * The one customer email KartoDesk can resend: WooCommerce's own "order details" email, to the order's billing address.
+	 * Returns the recipient and whether this store's WooCommerce offers the action.
+	 *
+	 * @param int $id Order ID.
+	 * @return array
+	 */
+	private static function email_state( $id ) {
+		list( $order ) = self::wc( 'GET', 'orders/' . $id );
+		$email         = isset( $order['billing']['email'] ) ? trim( (string) $order['billing']['email'] ) : '';
+		$routes        = rest_get_server()->get_routes( 'wc/v3' );
+		return array(
+			'available' => isset( $routes['/wc/v3/orders/(?P<id>[\d]+)/actions/send_order_details'] ),
+			'recipient' => is_email( $email ) ? $email : '',
+		);
+	}
+
+	/**
+	 * A saved customer address returned by WooCommerce's permission-checked controller, limited to known fields.
+	 *
+	 * @param array    $address Saved address.
+	 * @param string[] $keys    Allowed fields.
+	 * @return array
+	 */
+	private static function saved_address( $address, $keys ) {
+		$out = array();
+		foreach ( $keys as $key ) {
+			$value = isset( $address[ $key ] ) ? $address[ $key ] : '';
+			$out[ $key ] = is_string( $value ) ? mb_substr( trim( $value ), 0, 200 ) : '';
+		}
+		return $out;
+	}
+
+	/**
+	 * GET /woo/orders/{id}/email — who the order details would go to, and whether the store supports sending them.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public static function email_probe( WP_REST_Request $request ) {
+		$state = self::email_state( (int) $request['id'] );
+		return new WP_REST_Response( array( 'available' => $state['available'], 'recipient' => $state['recipient'] ) );
+	}
+
+	/**
+	 * POST /woo/orders/{id}/email — asks WooCommerce to send the order details email to the billing address.
+	 * The caller must repeat the recipient it showed the user; if the address changed since, nothing is sent. Another
+	 * request for the same order within a minute is refused, so a double click or retry cannot send twice.
+	 * Mirrors src/app/api/woo/orders/[id]/email/route.ts. No address override is accepted or forwarded.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public static function send_order_email( WP_REST_Request $request ) {
+		$body = $request->get_json_params();
+		if ( ! is_array( $body ) || array_keys( $body ) !== array( 'confirm_email' ) || ! is_string( $body['confirm_email'] ) || mb_strlen( $body['confirm_email'] ) > 254 ) {
+			return self::error( __( 'Invalid request.', 'kartodesk-for-woocommerce' ), 400 );
+		}
+		$id    = (int) $request['id'];
+		global $wpdb;
+		$lock = 'kartodesk_order_' . $id;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		if ( '1' !== (string) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK( %s, 5 )', $lock ) ) ) {
+			return self::error( __( 'Another send for this order is in progress.', 'kartodesk-for-woocommerce' ), 409 );
+		}
+		try {
+			$state = self::email_state( $id );
+			if ( ! $state['available'] ) { return self::error( __( 'This store\'s WooCommerce version cannot resend order details from here.', 'kartodesk-for-woocommerce' ), 501 ); }
+			if ( '' === $state['recipient'] ) { return self::error( __( 'This order has no valid billing email address, so there is nobody to send it to.', 'kartodesk-for-woocommerce' ), 409 ); }
+			if ( trim( $body['confirm_email'] ) !== $state['recipient'] ) { return self::error( __( 'The billing email changed after you opened this order. Reload it and check the address.', 'kartodesk-for-woocommerce' ), 409 ); }
+			$key = 'kartodesk_email_' . $id;
+			if ( get_transient( $key ) ) {
+				return self::error( __( 'Order details were already requested for this order a moment ago. Check the order notes before trying again.', 'kartodesk-for-woocommerce' ), 429 );
+			}
+			// Marked before sending: if the outcome is unclear (a timeout), it must not be repeated automatically.
+			if ( ! set_transient( $key, time(), MINUTE_IN_SECONDS ) ) { throw new KartoDesk_Error( esc_html__( 'Could not reserve this email request. Nothing was sent; please retry.', 'kartodesk-for-woocommerce' ), 503 ); }
+			// Check the actual order object WooCommerce is about to pass to its mailer as well.
+			$guard = static function ( $order ) use ( $id, $state ) {
+				if ( $order->get_id() === $id && trim( $order->get_billing_email() ) !== $state['recipient'] ) {
+					throw new KartoDesk_Error( esc_html__( 'The billing email changed before sending. Reload the order and check the address.', 'kartodesk-for-woocommerce' ), 409 );
+				}
+			};
+			add_action( 'woocommerce_before_resend_order_emails', $guard, PHP_INT_MAX );
+			try {
+				list( $result ) = self::wc( 'POST', 'orders/' . $id . '/actions/send_order_details', array(), array() );
+				if ( ! is_array( $result ) || empty( $result['message'] ) || ! is_string( $result['message'] ) ) { throw new KartoDesk_Error( esc_html__( 'The store did not confirm the email request. Check the order notes before retrying.', 'kartodesk-for-woocommerce' ), 502 ); }
+			} finally { remove_action( 'woocommerce_before_resend_order_emails', $guard, PHP_INT_MAX ); }
+			return new WP_REST_Response( array( 'accepted' => true, 'recipient' => $state['recipient'] ) );
+		} finally {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK( %s )', $lock ) );
+		}
 	}
 
 	/**

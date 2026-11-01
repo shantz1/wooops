@@ -4,7 +4,7 @@ Tags: woocommerce, orders, shipment tracking, order notes, fulfilment
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.8
+Stable tag: 0.2.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -38,6 +38,8 @@ Customer-facing notes are sent by WooCommerce's **Customer note** email to the o
 = Source code =
 
 The JavaScript in `build/` is compiled from TypeScript and React source in the public repository: https://github.com/shantz1/wooops (the panel components are in `src/`, the plugin entry in `wordpress/`). Build it with `npm ci && npm run build:wp`.
+
+If KartoDesk helps your store, an honest review on WordPress.org is appreciated: https://wordpress.org/support/plugin/kartodesk-for-woocommerce/reviews/
 
 == Installation ==
 
@@ -93,6 +95,19 @@ Products, simple product creation, stock, registered customers, order and invent
 KartoDesk does not track users or send telemetry. Its own scripts and styles load locally; product images can use the store's image or CDN URLs. It displays customer details that WooCommerce already stores, only to users who can manage WooCommerce.
 
 == Changelog ==
+
+= 0.2.0 =
+* Add update status in Settings and a link to WordPress's native automatic-update controls. Existing administrator permissions and automatic-update choices are preserved.
+* Harden customer assignment with permission-checked customer reads, same-second revision checks and shared order-edit locks.
+* Improve timeline timezone handling and retain distinct payment events and private refund notes. Printed summaries show refunds; shipping labels use the shipping phone by default, with an explicit option to include the billing contact.
+* Add an Activity tab on each order: one chronological, read-only list built from the order's dates, notes, tracking entries and refunds. Private notes and customer-facing messages are labelled; the list says plainly that WooCommerce keeps no complete audit log.
+* Add "Resend order details": asks WooCommerce to email its standard order details message to the confirmed billing address. Requires View orders and Notify customers permissions and is limited to one request per order per minute.
+* Add customer assignment on orders: search registered customers or return an order to guest checkout. Billing and shipping details are kept unless you choose to replace them, and an edit is refused if the order changed after you opened it.
+* Add printable Order summary (not a tax invoice) and a shipping label that show only what each document needs.
+* Fix a PHP 8.3 deprecation notice and a Plugin Check escaping finding in the dashboard code.
+
+= 0.1.9 =
+* Add a "Rate this plugin" link on the Plugins screen and an optional review request on the KartoDesk screen. The request appears only after two weeks of use, links to WordPress.org and can be dismissed permanently.
 
 = 0.1.8 =
 * Add Dashboard customization in Settings: choose and sort up to four overview cards, including today's orders, this week's orders and custom order statuses.

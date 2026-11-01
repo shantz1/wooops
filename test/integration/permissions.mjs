@@ -15,6 +15,11 @@ test("role permissions are enforced by the standalone API", { timeout: 90_000 },
   const writes = [];
   const orderReads = [];
   let omitCountHeader = false;
+  let emailAvailable = true;
+  let emailMode = "normal";
+  let customerRole = "customer";
+  const emailPosts = [];
+  const orderUpdates = [];
   const order = { id: 1, number: "1", status: "processing", currency: "USD", total: "10.00", billing: { email: "buyer@example.invalid" }, meta_data: [], line_items: [] };
   const product = { id: 1, name: "Mock product", type: "simple", manage_stock: true, stock_quantity: 5, date_modified_gmt: "2026-10-01T00:00:00" };
   const store = createServer(async (request, response) => {
@@ -26,6 +31,15 @@ test("role permissions are enforced by the standalone API", { timeout: 90_000 },
     if (request.method !== "GET") writes.push(`${request.method} ${path}`);
     response.setHeader("Content-Type", "application/json");
     if (path === "/wp-json/") return response.end(JSON.stringify({ name: "Mock store", timezone_string: "UTC", gmt_offset: 0 }));
+    if (path === "/wp-json/wc/v3/") return response.end(JSON.stringify({ routes: emailAvailable ? { "/wc/v3/orders/(?P<id>[\\d]+)/actions/send_order_details": { endpoints: [{ methods: ["POST"], args: { email: {}, force_email_update: {} } }] } } : {} }));
+    if (path === "/wp-json/wc/v3/customers/7") return response.end(JSON.stringify({ id: 7, ...(customerRole ? { role: customerRole } : {}), billing: { first_name: "Customer", email: "account@example.invalid", city: "Mumbai", country: "IN" }, shipping: { address_1: "Saved street", city: "Mumbai", country: "IN" } }));
+    if (/^\/wp-json\/wc\/v3\/orders\/[123]\/actions\/send_order_details$/.test(path)) {
+      emailPosts.push({ path, body });
+      if (emailMode === "unreadable") return response.end("not-json");
+      if (emailMode === "unconfirmed") return response.end("{}");
+      return response.end(JSON.stringify({ message: "Order details accepted by mock store" }));
+    }
+    if (/^\/wp-json\/wc\/v3\/orders\/[23]$/.test(path)) return response.end(JSON.stringify({ ...order, id: Number(path.at(-1)) }));
     if (path === "/wp-json/wc/v3/orders" || path === "/wp-json/wc/v3/customers" || path === "/wp-json/wc/v3/products") {
       if (path.endsWith("orders")) orderReads.push(Object.fromEntries(url.searchParams));
       if (!omitCountHeader) response.setHeader("X-WP-Total", url.searchParams.get("status") === "awaiting-shipment" ? "23" : "1");
@@ -33,7 +47,10 @@ test("role permissions are enforced by the standalone API", { timeout: 90_000 },
       return response.end(JSON.stringify(path.endsWith("orders") ? [order] : path.endsWith("products") ? [product] : [{ id: 7, email: "c@example.invalid" }]));
     }
     if (path === "/wp-json/wc/v3/orders/1") {
-      if (request.method === "PUT") Object.assign(order, body.status ? { status: body.status } : {}, body.meta_data ? { meta_data: body.meta_data.map(meta => ({ id: 11, ...meta })) } : {});
+      if (request.method === "PUT") {
+        orderUpdates.push(structuredClone(body));
+        Object.assign(order, body, body.meta_data ? { meta_data: body.meta_data.map(meta => ({ id: 11, ...meta })) } : {});
+      }
       return response.end(JSON.stringify(order));
     }
     if (path === "/wp-json/wc/v3/orders/1/notes") return response.writeHead(request.method === "POST" ? 201 : 200).end(JSON.stringify(request.method === "POST" ? { id: 1, ...body } : []));
@@ -173,5 +190,65 @@ test("role permissions are enforced by the standalone API", { timeout: 90_000 },
     assert.ok(settings.body.access.rules.logins.some(login => login.username === "pat" && login.role === "packer"));
     assert.ok(!JSON.stringify(settings.body).includes("scrypt:"), "password hashes never leave the server");
     assert.equal((await admin("/api/woo/orders/1", "PATCH", { status: "completed" })).status, 200);
+    const updates = await admin("/api/updates");
+    assert.equal(updates.status, 200);
+    assert.equal(updates.body.current_version, "0.2.0");
+    assert.equal(updates.body.status, "not_checked");
+    assert.equal((await admin("/api/updates", "POST", { command: "install" })).status, 405);
+    const pat = as(await signIn("pat", "packer-password-123"));
+    assert.equal((await pat("/api/updates")).status, 403);
+  });
+
+  await t.test("order ownership changes require read/customer access and a fresh state revision", async () => {
+    const admin = as(await signIn("", "admin-password-12345"));
+    const pat = as(await signIn("pat", "packer-password-123"));
+    const loaded = (await admin("/api/woo/orders/1")).body;
+    assert.match(loaded.edit_token, /^[a-f0-9]{64}$/);
+    const before = orderUpdates.length;
+    assert.equal((await pat("/api/woo/orders/1", "PATCH", { customer_id: 7, if_match: loaded.edit_token })).status, 403);
+    assert.equal((await admin("/api/woo/orders/1", "PATCH", { customer_id: 7 })).status, 400);
+    for (customerRole of ["administrator", ""]) assert.equal((await admin("/api/woo/orders/1", "PATCH", { customer_id: 7, if_match: loaded.edit_token })).status, 400);
+    customerRole = "customer";
+    order.shipping = { city: "Changed in the same second" };
+    assert.equal((await admin("/api/woo/orders/1", "PATCH", { customer_id: 7, if_match: loaded.edit_token })).status, 409);
+    assert.equal(orderUpdates.length, before, "denied or stale assignments never write");
+    const fresh = (await admin("/api/woo/orders/1")).body;
+    const originalBilling = structuredClone(order.billing);
+    const assigned = await admin("/api/woo/orders/1", "PATCH", { customer_id: 7, if_match: fresh.edit_token });
+    assert.equal(assigned.status, 200);
+    assert.equal(assigned.body.customer_id, 7);
+    assert.deepEqual(assigned.body.billing, originalBilling, "assignment alone leaves billing details intact");
+    assert.ok(!("if_match" in orderUpdates.at(-1)) && !("if_unmodified_since" in orderUpdates.at(-1)), "guard fields never reach WooCommerce");
+    const replaced = await admin("/api/woo/orders/1", "PATCH", { customer_id: 7, replace_addresses: true, if_match: assigned.body.edit_token });
+    assert.equal(replaced.status, 200);
+    assert.equal(replaced.body.billing.email, "account@example.invalid");
+    assert.equal(replaced.body.billing.phone, "", "replacement clears fields absent from the saved address");
+    assert.equal((await admin("/api/woo/orders/1", "PATCH", { customer_id: 0, if_match: replaced.body.edit_token })).status, 200);
+  });
+
+  await t.test("email resend validates confirmation, permissions, capability support and uncertain outcomes", async () => {
+    const admin = as(await signIn("", "admin-password-12345"));
+    const reader = as(await signIn("", "readonly-password-12"));
+    const confirmed = order.billing.email;
+    const before = emailPosts.length;
+    assert.equal((await reader("/api/woo/orders/1/email", "POST", { confirm_email: confirmed })).status, 403);
+    assert.equal((await admin("/api/woo/orders/1/email", "POST", { confirm_email: confirmed, email: "attacker@example.invalid" })).status, 400);
+    assert.equal((await admin("/api/woo/orders/1/email", "POST", { confirm_email: "old@example.invalid" })).status, 409);
+    emailAvailable = false;
+    assert.equal((await admin("/api/woo/orders/1/email", "POST", { confirm_email: confirmed })).status, 501);
+    emailAvailable = true;
+    assert.equal(emailPosts.length, before);
+    assert.equal((await admin("/api/woo/orders/1/email", "POST", { confirm_email: confirmed })).status, 200);
+    assert.deepEqual(emailPosts.at(-1).body, { email: confirmed, force_email_update: false }, "the store enforces the already-confirmed recipient without forcing an override");
+    assert.equal((await admin("/api/woo/orders/1/email", "POST", { confirm_email: confirmed })).status, 429);
+    assert.equal(emailPosts.length, before + 1);
+    for (const [id, mode] of [[2, "unreadable"], [3, "unconfirmed"]]) {
+      emailMode = mode;
+      const result = await admin(`/api/woo/orders/${id}/email`, "POST", { confirm_email: confirmed });
+      assert.equal(result.status, 502);
+      assert.equal(result.body.unknown, true);
+      assert.equal((await admin(`/api/woo/orders/${id}/email`, "POST", { confirm_email: confirmed })).status, 429, "an unclear send remains protected by the cooldown");
+    }
+    emailMode = "normal";
   });
 });

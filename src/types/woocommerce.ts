@@ -14,8 +14,9 @@ export interface WooLineItem {
   meta_data?: WooMeta[]; image?: { id: number; src: string };
 }
 export interface WooOrder {
+  edit_token?: string;
   id: number; number: string; status: WooOrderStatus; currency: string; total: string; date_created: string;
-  date_created_gmt?: string; date_modified?: string; date_paid?: string | null; date_paid_gmt?: string | null; date_completed?: string | null;
+  date_created_gmt?: string; date_modified?: string; date_modified_gmt?: string; date_paid?: string | null; date_paid_gmt?: string | null; date_completed?: string | null; date_completed_gmt?: string | null;
   prices_include_tax?: boolean; discount_total?: string; discount_tax?: string; shipping_total?: string; shipping_tax?: string;
   cart_tax?: string; total_tax?: string; payment_method?: string; payment_method_title?: string; transaction_id?: string;
   customer_id: number; customer_note?: string; created_via?: string;

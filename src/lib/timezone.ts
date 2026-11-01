@@ -34,3 +34,25 @@ export function storeDateBounds(from: string, to: string, timeZone: string) {
   return { after: storeDayStart(from, timeZone).toISOString().slice(0, 19),
     before: new Date(storeDayStart(next.toISOString().slice(0, 10), timeZone).getTime() - 1000).toISOString().slice(0, 19) };
 }
+
+/** Resolve a zone-less store wall-clock value without using the browser/server timezone. */
+export function storeLocalInstant(value: string, timeZone: string): Date | null {
+  const match = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(value.trim());
+  if (!match) return null;
+  const wall = `${match[1]}T${match[2] || "00"}:${match[3] || "00"}:${match[4] || "00"}`;
+  const target = Date.parse(`${wall}Z`);
+  if (!Number.isFinite(target) || new Date(target).toISOString().slice(0, 19) !== wall) return null;
+  const formatter = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+  const local = (ms: number) => {
+    const parts = formatter.formatToParts(new Date(ms));
+    const part = (type: string) => parts.find(item => item.type === type)!.value;
+    return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}:${part("second")}`;
+  };
+  const candidates = [-1, 0, 1].map(days => {
+    const sample = target + days * 86400000;
+    const offset = Date.parse(`${local(sample)}Z`) - sample;
+    return target - offset;
+  }).filter(ms => local(ms) === wall);
+  // During a repeated DST hour choose the earlier occurrence; callers flag local fallbacks as approximate.
+  return candidates.length ? new Date(Math.min(...candidates)) : null;
+}

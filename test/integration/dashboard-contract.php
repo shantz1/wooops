@@ -44,6 +44,7 @@ class WP_REST_Response {
 	public function is_error() { return $this->status >= 400; }
 }
 function __( $text, $domain = null ) { return $text; }
+function absint( $value ) { return abs( (int) $value ); }
 function esc_html( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' ); }
 function esc_html__( $text, $domain = null ) { return esc_html( $text ); }
 function esc_url( $text ) { return esc_html( $text ); }
