@@ -52,7 +52,7 @@ export function PanelPreferencesProvider({ children }: { children: React.ReactNo
   useEffect(() => { document.title = `${preferences.name} — Store Operations`; }, [preferences.name]);
   function save(value: PanelPreferences) {
     const next = { ...value, name: value.name.trim().slice(0, 60) || defaults.name };
-    localStorage.setItem("wooops:panel-preferences", JSON.stringify(next));
+    try { localStorage.setItem("wooops:panel-preferences", JSON.stringify(next)); } catch { /* Keep the preference for this session when storage is unavailable. */ }
     setPreferences(next);
   }
   return <Context.Provider value={{ timeZone, accessLoaded: Boolean(workspace), access, can, preferences, save }}>{children}</Context.Provider>;

@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Fragment } from "react";
-import { BarChart3, Boxes, LayoutDashboard, Loader2, LogOut, Menu, Package, Settings, ShoppingCart, Users, X } from "lucide-react";
+import { BarChart3, Boxes, LayoutDashboard, Loader2, LogOut, Menu, Moon, Package, Settings, ShoppingCart, Sun, Users, X } from "lucide-react";
 import { usePanelPreferences } from "@/components/panel-preferences";
 import { screenAllowed } from "@/lib/permissions";
 import { isAvailable as available, wordpressRuntime } from "@/lib/runtime";
@@ -67,6 +67,22 @@ function Brand() {
   );
 }
 
+function ThemeToggle() {
+  const { preferences, save } = usePanelPreferences();
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => setDark(preferences.theme === "dark" || (preferences.theme === "system" && media.matches));
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, [preferences.theme]);
+  const label = dark ? "Switch to light mode" : "Switch to dark mode";
+  return <button type="button" onClick={() => save({ ...preferences, theme: dark ? "light" : "dark" })} aria-label={label} title={label} className={`rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground ${focusRing}`}>
+    {dark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
+  </button>;
+}
+
 /**
  * Inside wp-admin the panel is ordinary page content next to WordPress's own menu. Its navigation is a
  * vertical list in the panel (sticky below the admin bar on desktop, a drawer opened by a button on small
@@ -91,7 +107,7 @@ function EmbeddedShell({ pathname, children }: { pathname: string; children: Rea
       <a href="#main" onClick={skipToContent} className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm focus:not-sr-only focus:absolute focus:left-3 focus:top-3">Skip to content</a>
       <aside className="hidden w-60 shrink-0 border-r bg-background lg:block">
         <div className="sticky top-8">
-          <div className="flex h-16 items-center border-b px-5"><Brand /></div>
+          <div className="flex h-16 items-center justify-between gap-2 border-b px-5"><Brand /><ThemeToggle /></div>
           <nav aria-label="KartoDesk" className="space-y-1 p-3"><NavLinks pathname={pathname} /></nav>
         </div>
       </aside>
@@ -117,6 +133,7 @@ function EmbeddedShell({ pathname, children }: { pathname: string; children: Rea
             <Menu className="size-5" aria-hidden="true" />
           </button>
           <Brand />
+          <div className="ml-auto"><ThemeToggle /></div>
         </div>
         <main id="main" tabIndex={-1} className="mx-auto max-w-[1400px] p-4 outline-none sm:p-6"><ScreenGate pathname={pathname}>{children}</ScreenGate></main>
       </div>
@@ -239,7 +256,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <div className="min-w-0"><p className="truncate text-sm font-medium">Operations</p><p className="truncate text-xs text-muted-foreground">Your store, in focus</p></div>
           </div>
-          <div className="rounded-full border border-primary/20 px-3 py-1 text-xs font-medium text-primary">Store workspace</div>
+          <div className="flex items-center gap-2"><ThemeToggle /><div className="rounded-full border border-primary/20 px-3 py-1 text-xs font-medium text-primary">Store workspace</div></div>
         </header>
         <main id="main" tabIndex={-1} className="mx-auto max-w-[1500px] p-4 outline-none sm:p-5 lg:p-8"><UpdateNotification /><ScreenGate pathname={pathname}>{children}</ScreenGate></main>
       </div>

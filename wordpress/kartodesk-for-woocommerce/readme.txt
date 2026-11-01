@@ -4,7 +4,7 @@ Tags: woocommerce, orders, shipment tracking, order notes, fulfilment
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.1.8.1
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -96,7 +96,8 @@ KartoDesk does not track users or send telemetry. Its own scripts and styles loa
 
 == Changelog ==
 
-= 0.2.0 =
+= 0.1.8.1 =
+* Add an optional focused KartoDesk view for selected WordPress roles and a navigation theme toggle.
 * Add update status in Settings and a link to WordPress's native automatic-update controls. Existing administrator permissions and automatic-update choices are preserved.
 * Harden customer assignment with permission-checked customer reads, same-second revision checks and shared order-edit locks.
 * Improve timeline timezone handling and retain distinct payment events and private refund notes. Printed summaries show refunds; shipping labels use the shipping phone by default, with an explicit option to include the billing contact.
@@ -106,7 +107,6 @@ KartoDesk does not track users or send telemetry. Its own scripts and styles loa
 * Add printable Order summary (not a tax invoice) and a shipping label that show only what each document needs.
 * Fix a PHP 8.3 deprecation notice and a Plugin Check escaping finding in the dashboard code.
 
-= 0.1.9 =
 * Add a "Rate this plugin" link on the Plugins screen and an optional review request on the KartoDesk screen. The request appears only after two weeks of use, links to WordPress.org and can be dismissed permanently.
 
 = 0.1.8 =

@@ -13,6 +13,8 @@ defined( 'ABSPATH' ) || exit;
 class KartoDesk_Admin {
 
 	const PAGE = 'kartodesk';
+	const FOCUS_OPTION = 'kartodesk_shop_manager_focus';
+	const FOCUS_ROLES_OPTION = 'kartodesk_focus_roles';
 
 	/**
 	 * Screens implemented by the plugin. Keep in sync with wordpress/app/main.tsx.
@@ -34,6 +36,8 @@ class KartoDesk_Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 		add_filter( 'script_loader_tag', array( __CLASS__, 'module_script' ), 10, 2 );
 		add_filter( 'admin_body_class', array( __CLASS__, 'body_class' ) );
+		add_action( 'admin_head', array( __CLASS__, 'focus_styles' ) );
+		add_action( 'admin_post_kartodesk_focus_settings', array( __CLASS__, 'save_focus_settings' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( KARTODESK_FILE ), array( __CLASS__, 'action_links' ) );
 	}
 
@@ -50,6 +54,64 @@ class KartoDesk_Admin {
 			'dashicons-clipboard',
 			56
 		);
+		add_submenu_page( self::PAGE, __( 'Display settings', 'kartodesk-for-woocommerce' ), __( 'Display settings', 'kartodesk-for-woocommerce' ), 'manage_options', 'kartodesk-display-settings', array( __CLASS__, 'focus_settings' ) );
+	}
+
+	/** Administrator-controlled display preference, separate from access permissions. */
+	public static function focus_settings() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You cannot change these settings.', 'kartodesk-for-woocommerce' ) );
+		}
+		echo '<div class="wrap"><h1>' . esc_html__( 'KartoDesk display settings', 'kartodesk-for-woocommerce' ) . '</h1><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		wp_nonce_field( 'kartodesk_focus_settings' );
+		echo '<input type="hidden" name="action" value="kartodesk_focus_settings"><p>' . esc_html__( 'Hide the WordPress sidebar and toolbar on the KartoDesk screen for selected roles:', 'kartodesk-for-woocommerce' ) . '</p>';
+		$selected = self::focus_roles();
+		foreach ( wp_roles()->get_names() as $role => $name ) {
+			if ( 'administrator' === $role ) {
+				continue;
+			}
+			echo '<p><label><input type="checkbox" name="roles[]" value="' . esc_attr( $role ) . '" ' . checked( in_array( $role, $selected, true ), true, false ) . '> ' . esc_html( translate_user_role( $name ) ) . '</label></p>';
+		}
+		echo '<p>' . esc_html__( 'Administrators keep the normal WordPress interface. This changes the display only; permissions and direct links are unchanged.', 'kartodesk-for-woocommerce' ) . '</p>';
+		submit_button();
+		echo '</form></div>';
+	}
+
+	public static function save_focus_settings() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You cannot change these settings.', 'kartodesk-for-woocommerce' ) );
+		}
+		check_admin_referer( 'kartodesk_focus_settings' );
+		$submitted = isset( $_POST['roles'] ) && is_array( $_POST['roles'] ) ? wp_unslash( $_POST['roles'] ) : array();
+		$allowed   = array_keys( wp_roles()->get_names() );
+		$selected  = array();
+		foreach ( $submitted as $role ) {
+			if ( is_string( $role ) && 'administrator' !== $role && in_array( $role, $allowed, true ) ) {
+				$selected[] = $role;
+			}
+		}
+		update_option( self::FOCUS_ROLES_OPTION, array_values( array_unique( $selected ) ) );
+		delete_option( self::FOCUS_OPTION );
+		wp_safe_redirect( admin_url( 'admin.php?page=kartodesk-display-settings' ) );
+		exit;
+	}
+
+	private static function focus_roles() {
+		$roles = get_option( self::FOCUS_ROLES_OPTION, null );
+		if ( ! is_array( $roles ) ) {
+			return '1' === get_option( self::FOCUS_OPTION, '0' ) ? array( 'shop_manager' ) : array();
+		}
+		return $roles;
+	}
+
+	/** Apply only to the workspace, never administrators or other admin screens. */
+	public static function focus_styles() {
+		$screen = get_current_screen();
+		$user   = wp_get_current_user();
+		if ( ! $screen || $screen->id !== self::$hook || current_user_can( 'manage_options' ) || is_super_admin() || ! array_intersect( (array) $user->roles, self::focus_roles() ) ) {
+			return;
+		}
+		echo '<style>body.kartodesk-admin{background:#f3f5f7}html.dark body.kartodesk-admin{background:#17191c}body.kartodesk-admin #adminmenumain,body.kartodesk-admin #wpadminbar{display:none!important}body.kartodesk-admin #wpcontent,body.kartodesk-admin #wpfooter{margin-left:0!important}html.wp-toolbar{padding-top:0!important}@media screen and (max-width:782px){html.wp-toolbar{padding-top:0!important}body.kartodesk-admin #wpcontent{padding-left:10px}}</style>';
 	}
 
 	/**

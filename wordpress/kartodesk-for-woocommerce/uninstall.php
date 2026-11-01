@@ -17,4 +17,6 @@ delete_metadata( 'user', 0, 'kartodesk_dashboard_preferences', '', true );
 
 // The review request's timestamp and each user's dismissal contain no store data.
 delete_option( 'kartodesk_first_seen' );
+delete_option( 'kartodesk_shop_manager_focus' );
+delete_option( 'kartodesk_focus_roles' );
 delete_metadata( 'user', 0, 'kartodesk_review_dismissed', '', true );
